@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>学生信息管理系统</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <main class="container py-4">
+      <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-4">
+        <h1 class="h3 m-0">学生信息管理系统</h1>
+        <a class="btn btn-primary" href="{{ url_for('add_student') }}">新增学生</a>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="mb-3">
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <form class="row g-2 mb-3" method="get" action="{{ url_for('list_students') }}">
+        <div class="col-12 col-md-8">
+          <input
+            class="form-control"
+            type="text"
+            name="q"
+            value="{{ query }}"
+            placeholder="按学号、姓名、专业搜索"
+          />
+        </div>
+        <div class="col-6 col-md-2 d-grid">
+          <button class="btn btn-outline-secondary" type="submit">搜索</button>
+        </div>
+        <div class="col-6 col-md-2 d-grid">
+          <a class="btn btn-outline-dark" href="{{ url_for('list_students') }}">重置</a>
+        </div>
+      </form>
+
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle bg-white">
+          <thead class="table-light">
+            <tr>
+              <th>ID</th>
+              <th>学号</th>
+              <th>姓名</th>
+              <th>性别</th>
+              <th>年龄</th>
+              <th>专业</th>
+              <th>电话</th>
+              <th>邮箱</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if students %}
+            {% for s in students %}
+            <tr>
+              <td>{{ s.id }}</td>
+              <td>{{ s.student_no }}</td>
+              <td>{{ s.name }}</td>
+              <td>{{ s.gender or '-' }}</td>
+              <td>{{ s.age or '-' }}</td>
+              <td>{{ s.major or '-' }}</td>
+              <td>{{ s.phone or '-' }}</td>
+              <td>{{ s.email or '-' }}</td>
+              <td>
+                <div class="d-flex gap-2">
+                  <a
+                    class="btn btn-sm btn-outline-primary"
+                    href="{{ url_for('edit_student', student_id=s.id) }}"
+                    >编辑</a
+                  >
+                  <form
+                    method="post"
+                    action="{{ url_for('delete_student', student_id=s.id) }}"
+                    onsubmit="return confirm('确认删除该学生吗？');"
+                  >
+                    <button class="btn btn-sm btn-outline-danger" type="submit">删除</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr>
+              <td colspan="9" class="text-center text-muted py-4">暂无学生数据</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

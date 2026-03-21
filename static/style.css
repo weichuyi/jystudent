@@ -1,0 +1,17 @@
+body {
+  background-color: #f5f7fb;
+}
+
+h1 {
+  font-weight: 700;
+}
+
+table td,
+table th {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.card {
+  border: 0;
+}
