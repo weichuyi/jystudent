@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}选课管理{% endblock %}
+
+{% block content %}
+<div class="py-4">
+    <h1 class="h2 mb-4">我的选课</h1>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle bg-white">
+            <thead class="table-light">
+                <tr>
+                    <th>课程号</th>
+                    <th>课程名</th>
+                    <th>教师</th>
+                    <th>学分</th>
+                    <th>选课时间</th>
+                    <th>状态</th>
+                    <th width="100">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if enrollments %}
+                {% for e in enrollments %}
+                <tr>
+                    <td><strong>{{ e.course.course_no }}</strong></td>
+                    <td>{{ e.course.course_name }}</td>
+                    <td>{{ e.course.teacher.name if e.course.teacher else '-' }}</td>
+                    <td>{{ e.course.credits or '-' }}</td>
+                    <td>{{ e.enrollment_date.strftime('%Y-%m-%d') if e.enrollment_date else '-' }}</td>
+                    <td>
+                        {% if e.status == 'enrolled' %}
+                        <span class="badge bg-success">已选</span>
+                        {% elif e.status == 'withdrawn' %}
+                        <span class="badge bg-warning">已退课</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ e.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" type="button" disabled>退课</button>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">暂无选课记录</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
