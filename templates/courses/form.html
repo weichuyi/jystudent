@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}{% if action == 'add' %}新增课程{% else %}编辑课程{% endif %}{% endblock %}
+
+{% block content %}
+<div class="py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="h2 mb-4">{% if action == 'add' %}新增课程{% else %}编辑课程{% endif %}</h1>
+
+            <form method="post" class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">课程编号 *</label>
+                            <input class="form-control" type="text" name="course_no" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">课程名称 *</label>
+                            <input class="form-control" type="text" name="course_name" required>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">学分</label>
+                            <input class="form-control" type="number" name="credits" step="0.5" min="0">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">学时</label>
+                            <input class="form-control" type="number" name="hours" min="0">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">容量</label>
+                            <input class="form-control" type="number" name="max_capacity" value="50" min="1">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">学期</label>
+                            <input class="form-control" type="text" name="semester" placeholder="如 2024-1">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">任课教师</label>
+                            <select class="form-select" name="teacher_id">
+                                <option value="">请选择教师</option>
+                                {% for t in teachers %}
+                                <option value="{{ t.id }}">{{ t.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer d-flex justify-content-end gap-2">
+                    <a class="btn btn-outline-secondary" href="{{ url_for('list_courses') }}">取消</a>
+                    <button class="btn btn-primary" type="submit">
+                        {% if action == 'add' %}新增{% else %}保存{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
