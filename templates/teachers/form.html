@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}{% if action == 'add' %}新增教师{% else %}编辑教师{% endif %}{% endblock %}
+
+{% block content %}
+<div class="py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="h2 mb-4">{% if action == 'add' %}新增教师{% else %}编辑教师{% endif %}</h1>
+
+            <form method="post" class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">教工号 *</label>
+                            <input class="form-control" type="text" name="teacher_no" value="{{ teacher.teacher_no or '' }}" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">姓名 *</label>
+                            <input class="form-control" type="text" name="name" value="{{ teacher.name or '' }}" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">性别</label>
+                            <select class="form-select" name="gender">
+                                <option value="">请选择</option>
+                                <option value="男" {% if teacher.gender == '男' %}selected{% endif %}>男</option>
+                                <option value="女" {% if teacher.gender == '女' %}selected{% endif %}>女</option>
+                                <option value="其他" {% if teacher.gender == '其他' %}selected{% endif %}>其他</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-8">
+                            <label class="form-label">部门</label>
+                            <input class="form-control" type="text" name="department" value="{{ teacher.department or '' }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">学位</label>
+                            <input class="form-control" type="text" name="qualification" value="{{ teacher.qualification or '' }}" placeholder="如：硕士、博士">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">电话</label>
+                            <input class="form-control" type="text" name="phone" value="{{ teacher.phone or '' }}">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">邮箱</label>
+                            <input class="form-control" type="email" name="email" value="{{ teacher.email or '' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer d-flex justify-content-end gap-2">
+                    <a class="btn btn-outline-secondary" href="{{ url_for('list_teachers') }}">取消</a>
+                    <button class="btn btn-primary" type="submit">
+                        {% if action == 'add' %}新增{% else %}保存{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
