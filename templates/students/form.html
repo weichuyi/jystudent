@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}{% if action == 'add' %}新增学生{% else %}编辑学生{% endif %}{% endblock %}
+
+{% block content %}
+<div class="py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="mb-3">
+                <h1 class="h2">{% if action == 'add' %}新增学生{% else %}编辑学生{% endif %}</h1>
+            </div>
+
+            <form method="post" class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">学号 *</label>
+                            <input class="form-control" type="text" name="student_no" value="{{ student.student_no or '' }}" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">姓名 *</label>
+                            <input class="form-control" type="text" name="name" value="{{ student.name or '' }}" required>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">性别</label>
+                            <select class="form-select" name="gender">
+                                <option value="">请选择</option>
+                                <option value="男" {% if student.gender == '男' %}selected{% endif %}>男</option>
+                                <option value="女" {% if student.gender == '女' %}selected{% endif %}>女</option>
+                                <option value="其他" {% if student.gender == '其他' %}selected{% endif %}>其他</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">年龄</label>
+                            <input class="form-control" type="number" name="age" value="{{ student.age or '' }}" min="1" max="120">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">班级</label>
+                            <select class="form-select" name="class_id">
+                                <option value="">请选择班级</option>
+                                {% for cls in classes %}
+                                <option value="{{ cls.id }}" {% if student.class_id == cls.id %}selected{% endif %}>{{ cls.class_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">专业</label>
+                            <input class="form-control" type="text" name="major" value="{{ student.major or '' }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">电话</label>
+                            <input class="form-control" type="text" name="phone" value="{{ student.phone or '' }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">邮箱</label>
+                            <input class="form-control" type="email" name="email" value="{{ student.email or '' }}">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">身份证号</label>
+                            <input class="form-control" type="text" name="id_number" value="{{ student.id_number or '' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer d-flex justify-content-end gap-2">
+                    <a class="btn btn-outline-secondary" href="{{ url_for('list_students') }}">取消</a>
+                    <button class="btn btn-primary" type="submit">
+                        <i class="bi bi-check-circle"></i>
+                        {% if action == 'add' %}新增{% else %}保存{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
