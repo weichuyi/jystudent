@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}成绩管理{% endblock %}
+
+{% block content %}
+<div class="py-4">
+    <h1 class="h2 mb-4">成绩管理</h1>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle bg-white">
+            <thead class="table-light">
+                <tr>
+                    <th>学号</th>
+                    <th>学生名称</th>
+                    <th>课程</th>
+                    <th>学分</th>
+                    <th>成绩</th>
+                    <th>等级</th>
+                    <th width="120">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if enrollments %}
+                {% for e in enrollments %}
+                <tr>
+                    <td><strong>{{ e.student.student_no }}</strong></td>
+                    <td>{{ e.student.name }}</td>
+                    <td>{{ e.course.course_name }}</td>
+                    <td>{{ e.course.credits or '-' }}</td>
+                    <td>{{ e.score or '-' }}</td>
+                    <td>{{ e.grade or '-' }}</td>
+                    <td>
+                        {% if session.role in ['admin', 'teacher'] %}
+                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('record_score', enrollment_id=e.id) }}">
+                            {% if e.score %}修改{% else %}录入{% endif %}
+                        </a>
+                        {% else %}
+                        <span class="text-muted">{{ e.score if e.score else '未评分' }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">暂无成绩数据</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
