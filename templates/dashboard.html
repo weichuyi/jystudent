@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}仪表板{% endblock %}
+
+{% block content %}
+<div class="py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h2">欢迎 {{ user.full_name }}<small class="text-muted">（{{ user.role }}）</small></h1>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-people-fill text-primary" style="font-size: 2rem;"></i>
+                    <h3 class="h5 mt-2">学生总数</h3>
+                    <p class="h3 text-primary mb-0">{{ stats.total_students }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-person-fill-check text-success" style="font-size: 2rem;"></i>
+                    <h3 class="h5 mt-2">教师总数</h3>
+                    <p class="h3 text-success mb-0">{{ stats.total_teachers }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-journal-text text-warning" style="font-size: 2rem;"></i>
+                    <h3 class="h5 mt-2">课程总数</h3>
+                    <p class="h3 text-warning mb-0">{{ stats.total_courses }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-building text-info" style="font-size: 2rem;"></i>
+                    <h3 class="h5 mt-2">班级总数</h3>
+                    <p class="h3 text-info mb-0">{{ stats.total_classes }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-light border-bottom">
+                    <h5 class="mb-0">快速导航</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        {% if user.role in ['admin', 'teacher'] %}
+                        <div class="col-md-3 col-sm-6">
+                            <a href="{{ url_for('list_students') }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-people"></i> 学生管理
+                            </a>
+                        </div>
+                        {% if user.role == 'admin' %}
+                        <div class="col-md-3 col-sm-6">
+                            <a href="{{ url_for('list_teachers') }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-person-badge"></i> 教师管理
+                            </a>
+                        </div>
+                        {% endif %}
+                        <div class="col-md-3 col-sm-6">
+                            <a href="{{ url_for('list_courses') }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-journal-text"></i> 课程管理
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <a href="{{ url_for('list_classes') }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-building"></i> 班级管理
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <a href="{{ url_for('list_scores') }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-graph-up"></i> 成绩管理
+                            </a>
+                        </div>
+                        {% endif %}
+                        {% if user.role == 'student' %}
+                        <div class="col-md-6 col-sm-6">
+                            <a href="{{ url_for('list_courses') }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-journal-text"></i> 选课
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-sm-6">
+                            <a href="{{ url_for('list_scores') }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-graph-up"></i> 查看成绩
+                            </a>
+                        </div>
+                        {% endif %}
+                        {% if user.role == 'admin' %}
+                        <div class="col-md-3 col-sm-6">
+                            <a href="{{ url_for('list_users') }}" class="btn btn-outline-danger w-100">
+                                <i class="bi bi-shield-lock"></i> 用户管理
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <a href="{{ url_for('list_ops_log') }}" class="btn btn-outline-danger w-100">
+                                <i class="bi bi-file-text"></i> 操作日志
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
