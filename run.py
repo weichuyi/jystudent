@@ -1,5 +1,5 @@
 """
-学生信息管理系统 - 浏览器启动器
+智慧校园管理平台 - 浏览器启动器
 
 这个脚本会在启动 Flask 应用后自动打开浏览器
 """
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     from app import app, init_db
     
     print("=" * 60)
-    print("学生信息管理系统")
+    print("智慧校园管理平台")
     print("=" * 60)
     print()
     print("初始化数据库...")
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     # 打开浏览器
     print("浏览器将在 2 秒后自动打开")
     print("访问地址: http://127.0.0.1:5000")
-    print("默认账户: admin / admin@2024")
+    print("默认账户: admin / weichuy1")
     print()
     print("-" * 60)
     
