@@ -70,6 +70,22 @@
     {% if session.role == 'admin' %}
     <div class="sidebar-section">
       <div class="sidebar-section-label">系统管理</div>
+      <a class="sidebar-link {% if request.endpoint == 'admin.index' %}active{% endif %}"
+         href="{{ url_for('admin.index') }}">
+        <i class="bi bi-gear-fill nav-icon"></i> 管理中心
+      </a>
+      <a class="sidebar-link {% if request.endpoint == 'admin.backup_list' %}active{% endif %}"
+         href="{{ url_for('admin.backup_list') }}">
+        <i class="bi bi-cloud-check nav-icon"></i> 备份管理
+      </a>
+      <a class="sidebar-link {% if request.endpoint == 'admin.data_management' %}active{% endif %}"
+         href="{{ url_for('admin.data_management') }}">
+        <i class="bi bi-download nav-icon"></i> 数据导出
+      </a>
+      <a class="sidebar-link {% if request.endpoint == 'admin.system_info' %}active{% endif %}"
+         href="{{ url_for('admin.system_info') }}">
+        <i class="bi bi-info-circle-fill nav-icon"></i> 系统信息
+      </a>
       <a class="sidebar-link {% if 'user' in (request.endpoint or '') %}active{% endif %}"
          href="{{ url_for('list_users') }}">
         <i class="bi bi-shield-fill-check nav-icon"></i> 用户管理
