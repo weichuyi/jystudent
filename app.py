@@ -482,6 +482,22 @@ def _teacher_course_ids(user_id):
     )
     return list({r[0] for r in primary_rows + secondary_rows})
 
+
+def _is_counselor(user_id):
+    """是否为辅导员（即至少负责一个班级）。"""
+    if not user_id:
+        return False
+    return Class.query.filter_by(headteacher_id=user_id).first() is not None
+
+
+@app.context_processor
+def inject_role_flags():
+    role = session.get("role")
+    user_id = session.get("user_id")
+    return {
+        "is_counselor": role == "teacher" and _is_counselor(user_id)
+    }
+
 @app.route("/students")
 @login_required
 def list_students():
@@ -863,6 +879,10 @@ def delete_student(student_id):
 def list_classes():
     q = Class.query
     if session.get("role") == "teacher":
+        if not _is_counselor(session["user_id"]):
+            flash("任课老师不能进行班级管理", "warning")
+            return redirect(url_for("list_scores"))
+
         managed_ids = _teacher_managed_class_ids(session["user_id"])
         if managed_ids:
             q = q.filter(Class.id.in_(managed_ids))
