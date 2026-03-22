@@ -4,16 +4,17 @@
 """
 import os
 import shutil
-from flask import Blueprint, render_template, request, jsonify, send_file, flash, redirect, url_for
+import logging
+from flask import Blueprint, render_template, request, jsonify, send_file, flash, redirect, url_for, session
 from datetime import datetime
 
 from app.utils.validators import role_required, login_required
 from app.services import BackupService, ExportService, ImportService
-from app.utils.logger import get_logger, log_audit
+from app.utils.logger import get_audit_logger
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
-logger = get_logger()
-
+logger = logging.getLogger(__name__)
+audit_logger = get_audit_logger()
 
 @admin_bp.route('/')
 @login_required
@@ -40,7 +41,8 @@ def index():
             'log_sizes': log_sizes
         }
         
-        log_audit('访问管理员首页', 'admin_access', 'success')
+        log_entry = f"USER={session.get('user_id')} | ACTION=访问管理员首页 | MODULE=admin_index"
+        audit_logger.info(log_entry)
         return render_template('admin/index.html', stats=stats)
     except Exception as e:
         logger.error(f"管理员首页错误: {str(e)}", exc_info=True)
