@@ -50,6 +50,15 @@
                         </div>
 
                         <div class="col-md-6">
+                            <label class="form-label">状态</label>
+                            <select class="form-select" name="status">
+                                <option value="enrolled" {% if (student.status or 'enrolled') == 'enrolled' %}selected{% endif %}>在读</option>
+                                <option value="leave" {% if student.status == 'leave' %}selected{% endif %}>休学</option>
+                                <option value="dropout" {% if student.status == 'dropout' %}selected{% endif %}>退学</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
                             <label class="form-label">专业</label>
                             <input class="form-control" type="text" name="major" value="{{ student.major or '' }}">
                         </div>

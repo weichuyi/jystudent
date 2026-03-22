@@ -34,7 +34,6 @@
         <option value="">所有状态</option>
         <option value="enrolled" {% if status == 'enrolled' %}selected{% endif %}>在读</option>
         <option value="leave"    {% if status == 'leave'    %}selected{% endif %}>休学</option>
-        <option value="return"   {% if status == 'return'   %}selected{% endif %}>复学</option>
         <option value="dropout"  {% if status == 'dropout'  %}selected{% endif %}>退学</option>
       </select>
       <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> 搜索</button>
