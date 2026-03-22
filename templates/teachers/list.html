@@ -1,75 +1,127 @@
-{% extends "base.html" %}
-
+﻿{% extends "base.html" %}
 {% block title %}教师管理{% endblock %}
+{% block page_title %}教师管理{% endblock %}
 
 {% block content %}
-<div class="py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h2 m-0">教师管理</h1>
-        <a class="btn btn-primary" href="{{ url_for('add_teacher') }}">
-            <i class="bi bi-plus-circle"></i> 新增教师
-        </a>
-    </div>
-
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-12">
-                    <input class="form-control" type="text" name="q" value="{{ query }}" placeholder="教工号、姓名、部门...">
-                </div>
-                <div class="col-12 d-grid gap-2">
-                    <button class="btn btn-outline-secondary" type="submit">搜索</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover align-middle bg-white">
-            <thead class="table-light">
-                <tr>
-                    <th>教工号</th>
-                    <th>姓名</th>
-                    <th>性别</th>
-                    <th>部门</th>
-                    <th>学位</th>
-                    <th>电话</th>
-                    <th>邮箱</th>
-                    <th width="120">操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if teachers %}
-                {% for teacher in teachers %}
-                <tr>
-                    <td><strong>{{ teacher.teacher_no }}</strong></td>
-                    <td>{{ teacher.name }}</td>
-                    <td>{{ teacher.gender or '-' }}</td>
-                    <td>{{ teacher.department or '-' }}</td>
-                    <td>{{ teacher.qualification or '-' }}</td>
-                    <td>{{ teacher.phone or '-' }}</td>
-                    <td>{{ teacher.email or '-' }}</td>
-                    <td>
-                        <div class="btn-group btn-group-sm" role="group">
-                            <a class="btn btn-outline-primary" href="{{ url_for('edit_teacher', teacher_id=teacher.id) }}" title="编辑">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <form method="post" action="{{ url_for('delete_teacher', teacher_id=teacher.id) }}" style="display:inline;" onsubmit="return confirm('确认删除？');">
-                                <button class="btn btn-outline-danger btn-sm" type="submit" title="删除">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-                {% else %}
-                <tr>
-                    <td colspan="8" class="text-center py-4 text-muted">暂无教师数据</td>
-                </tr>
-                {% endif %}
-            </tbody>
-        </table>
-    </div>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">教师信息</h1>
+    <p class="page-subtitle">管理所有教师信息</p>
+  </div>
+  {% if session.role == 'admin' %}
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#importModal">
+      <i class="bi bi-upload"></i> 批量导入
+    </button>
+    <a href="{{ url_for('add_teacher') }}" class="btn btn-primary">
+      <i class="bi bi-plus-circle"></i> 新增教师
+    </a>
+  </div>
+  {% endif %}
 </div>
+
+<div class="card mb-3">
+  <div class="card-body" style="padding:.85rem 1.25rem">
+    <form method="get" class="search-bar">
+      <input class="form-control" type="text" name="q" value="{{ query }}" placeholder="教工号、姓名、部门" style="width:220px;flex-shrink:0">
+      <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> 搜索</button>
+      <a href="{{ url_for('list_teachers') }}" class="btn btn-outline-secondary">重置</a>
+    </form>
+  </div>
+</div>
+
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>教工号</th>
+          <th>姓名</th>
+          <th>性别</th>
+          <th>部门</th>
+          <th>学位</th>
+          <th>电话</th>
+          <th>邮箱</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if teachers %}
+        {% for teacher in teachers %}
+        <tr>
+          <td style="color:#94a3b8;font-size:.78rem">{{ loop.index }}</td>
+          <td><code style="background:#f1f5f9;padding:.15em .45em;border-radius:.3rem;font-size:.8rem">{{ teacher.teacher_no }}</code></td>
+          <td class="fw-semibold">{{ teacher.name }}</td>
+          <td>{{ teacher.gender or '' }}</td>
+          <td>{{ teacher.department or '' }}</td>
+          <td>{{ teacher.qualification or '' }}</td>
+          <td>{{ teacher.phone or '' }}</td>
+          <td>{{ teacher.email or '' }}</td>
+          <td>
+            <div class="d-flex gap-1">
+              {% if session.role == 'admin' %}
+              <a href="{{ url_for('edit_teacher', teacher_id=teacher.id) }}" class="btn btn-sm btn-outline-primary" title="编辑">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <form method="post" action="{{ url_for('delete_teacher', teacher_id=teacher.id) }}" style="display:inline" onsubmit="return confirm('确认删除该教师？')">
+                <button class="btn btn-sm btn-outline-danger" type="submit" title="删除">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="9">
+            <div class="no-data">
+              <i class="bi bi-person-badge"></i>
+              <p>暂无教师数据</p>
+            </div>
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 批量导入弹窗 -->
+{% if session.role == 'admin' %}
+<div class="modal fade" id="importModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-upload me-2"></i>批量导入教师</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('import_teachers') }}" enctype="multipart/form-data">
+        <div class="modal-body">
+          <div class="alert alert-info" style="font-size:.84rem">
+            <i class="bi bi-info-circle me-1"></i>
+            请先下载模板，按格式填写后上传。<br>
+            账号不填默认用<strong>教工号</strong>，密码不填默认 <code>123456</code>。
+          </div>
+          <div class="mb-3">
+            <a href="{{ url_for('teacher_import_template') }}" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-file-earmark-excel"></i> 下载导入模板
+            </a>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">选择文件（.xlsx）</label>
+            <input type="file" name="file" class="form-control" accept=".xlsx" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+          <button type="submit" class="btn btn-success"><i class="bi bi-upload"></i> 开始导入</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
