@@ -72,7 +72,7 @@
             {% endif %}
           </td>
           <td>
-            {% if e.status == 'enrolled' and session.role in ['student', 'admin', 'teacher'] %}
+            {% if e.status == 'enrolled' and session.role in ['admin', 'teacher'] %}
             <form method="post" action="{{ url_for('withdraw_enrollment', enrollment_id=e.id) }}" style="display:inline" onsubmit="return confirm('确认将该选课记录设为退课吗？')">
               <button class="btn btn-sm btn-outline-danger" type="submit">退课</button>
             </form>

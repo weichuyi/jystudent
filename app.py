@@ -1708,10 +1708,8 @@ def withdraw_enrollment(enrollment_id):
 
     role = session.get("role")
     if role == "student":
-        student = Student.query.filter_by(user_id=session["user_id"]).first()
-        if not student or enrollment.student_id != student.id:
-            flash("你只能退自己的课", "danger")
-            return redirect(url_for("list_enrollments"))
+        flash("学生不允许退课，如需处理请联系管理员", "warning")
+        return redirect(url_for("list_enrollments"))
     elif role == "teacher":
         managed_ids = _teacher_managed_class_ids(session["user_id"])
         if enrollment.student.class_id not in managed_ids:

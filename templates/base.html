@@ -106,12 +106,6 @@
   </nav>
 
   <div class="sidebar-footer">
-    <a href="{{ url_for('change_password') }}" class="sidebar-link" style="margin-bottom:.15rem">
-      <i class="bi bi-key-fill nav-icon"></i> 修改密码
-    </a>
-    <a href="{{ url_for('logout') }}" class="sidebar-link" style="color:rgba(255,120,120,.85)">
-      <i class="bi bi-box-arrow-left nav-icon"></i> 退出登录
-    </a>
     <div class="sidebar-user">
       <div class="sidebar-user-avatar">{{ (session.full_name or session.username or '?')[0] | upper }}</div>
       <div class="sidebar-user-info">
