@@ -1,12 +1,26 @@
 ﻿{% extends "base.html" %}
-{% block title %}我的选课{% endblock %}
+{% block title %}{% if session.role == 'student' %}我的选课{% else %}选课记录{% endif %}{% endblock %}
 {% block page_title %}选课记录{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div>
-    <h1 class="page-title">我的选课</h1>
-    <p class="page-subtitle">查看您已选的所有课程</p>
+    <h1 class="page-title">{% if session.role == 'student' %}我的选课{% else %}选课记录{% endif %}</h1>
+    <p class="page-subtitle">{% if session.role == 'student' %}查看您已选的所有课程{% else %}查看并管理学生选课记录{% endif %}</p>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body" style="padding:.85rem 1.25rem">
+    <form method="get" class="search-bar">
+      <select class="form-select" name="status" style="width:150px;flex-shrink:0">
+        <option value="">全部状态</option>
+        <option value="enrolled" {% if status == 'enrolled' %}selected{% endif %}>已选</option>
+        <option value="withdrawn" {% if status == 'withdrawn' %}selected{% endif %}>已退课</option>
+      </select>
+      <button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> 筛选</button>
+      <a href="{{ url_for('list_enrollments') }}" class="btn btn-outline-secondary">重置</a>
+    </form>
   </div>
 </div>
 
@@ -16,6 +30,10 @@
       <thead>
         <tr>
           <th>#</th>
+          {% if session.role != 'student' %}
+          <th>学号</th>
+          <th>姓名</th>
+          {% endif %}
           <th>课程号</th>
           <th>课程名称</th>
           <th>任课教师</th>
@@ -30,6 +48,10 @@
         {% for e in enrollments %}
         <tr>
           <td style="color:#94a3b8;font-size:.78rem">{{ loop.index }}</td>
+          {% if session.role != 'student' %}
+          <td><code style="background:#f1f5f9;padding:.15em .45em;border-radius:.3rem;font-size:.8rem">{{ e.student.student_no }}</code></td>
+          <td class="fw-semibold">{{ e.student.name }}</td>
+          {% endif %}
           <td><code style="background:#f1f5f9;padding:.15em .45em;border-radius:.3rem;font-size:.8rem">{{ e.course.course_no }}</code></td>
           <td class="fw-semibold">{{ e.course.course_name }}</td>
           <td>{{ e.course.teacher.name if e.course.teacher else '' }}</td>
@@ -45,13 +67,19 @@
             {% endif %}
           </td>
           <td>
-            <button class="btn btn-sm btn-outline-danger" type="button" disabled>退课</button>
+            {% if e.status == 'enrolled' and session.role in ['student', 'admin', 'teacher'] %}
+            <form method="post" action="{{ url_for('withdraw_enrollment', enrollment_id=e.id) }}" style="display:inline" onsubmit="return confirm('确认将该选课记录设为退课吗？')">
+              <button class="btn btn-sm btn-outline-danger" type="submit">退课</button>
+            </form>
+            {% else %}
+            <span style="color:#94a3b8;font-size:.8rem">-</span>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
         {% else %}
         <tr>
-          <td colspan="8">
+          <td colspan="10">
             <div class="no-data">
               <i class="bi bi-journal-bookmark"></i>
               <p>暂无选课记录</p>

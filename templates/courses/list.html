@@ -9,9 +9,14 @@
     <p class="page-subtitle">{% if session.role == 'student' %}点击"选课"按钮可以选择您感兴趣的课程{% else %}管理所有课程信息{% endif %}</p>
   </div>
   {% if session.role in ['admin', 'teacher'] %}
-  <a href="{{ url_for('add_course') }}" class="btn btn-primary">
-    <i class="bi bi-plus-circle"></i> 新增课程
-  </a>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#importCourseModal">
+      <i class="bi bi-upload"></i> 批量导入
+    </button>
+    <a href="{{ url_for('add_course') }}" class="btn btn-primary">
+      <i class="bi bi-plus-circle"></i> 新增课程
+    </a>
+  </div>
   {% endif %}
 </div>
 
@@ -95,4 +100,38 @@
     </table>
   </div>
 </div>
+
+{% if session.role in ['admin', 'teacher'] %}
+<div class="modal fade" id="importCourseModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-upload me-2"></i>批量导入课程</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('import_courses') }}" enctype="multipart/form-data">
+        <div class="modal-body">
+          <div class="alert alert-info" style="font-size:.84rem">
+            <i class="bi bi-info-circle me-1"></i>
+            请先下载模板，按格式填写后上传。
+          </div>
+          <div class="mb-3">
+            <a href="{{ url_for('course_import_template') }}" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-file-earmark-excel"></i> 下载导入模板
+            </a>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">选择文件（.xlsx）</label>
+            <input type="file" name="file" class="form-control" accept=".xlsx" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+          <button type="submit" class="btn btn-success"><i class="bi bi-upload"></i> 开始导入</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
