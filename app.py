@@ -124,6 +124,7 @@ class Course(db.Model):
     semester = db.Column(db.String(20))  # 学期 如 2024-1
     status = db.Column(db.String(20), default="open")  # open, closed
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     enrollments = db.relationship("Enrollment", backref="course", lazy=True)
     co_teachers = db.relationship("Teacher", secondary=course_teacher_links, back_populates="co_courses")
