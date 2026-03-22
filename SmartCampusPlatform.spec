@@ -1,16 +1,21 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_all
 
-hiddenimports = ['flask_sqlalchemy']
+datas = [('templates', 'templates'), ('static', 'static'), ('app.py', '.')]
+binaries = []
+hiddenimports = ['flask_sqlalchemy', 'openpyxl']
 hiddenimports += collect_submodules('flask')
 hiddenimports += collect_submodules('flask_sqlalchemy')
+tmp_ret = collect_all('openpyxl')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
     ['C:\\Users\\weichuyi\\Desktop\\jystudent\\run.py'],
     pathex=[],
-    binaries=[],
-    datas=[('templates', 'templates'), ('static', 'static'), ('app.py', '.')],
+    binaries=binaries,
+    datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
