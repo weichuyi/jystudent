@@ -11,7 +11,7 @@
             </h1>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('admin.index') }}">管理中心</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_index') }}">管理中心</a></li>
                     <li class="breadcrumb-item active">备份管理</li>
                 </ol>
             </nav>
@@ -21,12 +21,12 @@
     <!-- 按钮栏 -->
     <div class="row mb-4">
         <div class="col-md-12">
-            <form method="POST" action="{{ url_for('admin.create_backup') }}" class="d-inline-block">
+            <form method="POST" action="{{ url_for('admin_create_backup') }}" class="d-inline-block">
                 <button type="submit" class="btn btn-success btn-lg">
                     <i class="bi bi-plus-circle"></i> 创建新备份
                 </button>
             </form>
-            <a href="{{ url_for('admin.index') }}" class="btn btn-secondary btn-lg ms-2">
+            <a href="{{ url_for('admin_index') }}" class="btn btn-secondary btn-lg ms-2">
                 <i class="bi bi-arrow-left"></i> 返回
             </a>
         </div>
@@ -67,7 +67,7 @@
                                     <td>
                                         <div class="btn-group" role="group">
                                             <!-- 恢复按钮 -->
-                                            <form method="POST" action="{{ url_for('admin.restore_backup', backup_file=backup.filename) }}" class="d-inline">
+                                            <form method="POST" action="{{ url_for('admin_restore_backup', backup_file=backup.filename) }}" class="d-inline">
                                                 <button type="submit" class="btn btn-sm btn-success" 
                                                         onclick="return confirm('确实要恢复此备份吗？当前数据将被覆盖！');" 
                                                         title="恢复此备份">
@@ -76,14 +76,14 @@
                                             </form>
                                             
                                             <!-- 下载按钮 -->
-                                            <a href="{{ url_for('admin.download_backup', backup_file=backup.filename) }}" 
+                                            <a href="{{ url_for('admin_download_backup', backup_file=backup.filename) }}" 
                                                class="btn btn-sm btn-info" 
                                                title="下载备份文件">
                                                 <i class="bi bi-download"></i> 下载
                                             </a>
                                             
                                             <!-- 删除按钮 -->
-                                            <form method="POST" action="{{ url_for('admin.delete_backup', backup_file=backup.filename) }}" class="d-inline">
+                                            <form method="POST" action="{{ url_for('admin_delete_backup', backup_file=backup.filename) }}" class="d-inline">
                                                 <button type="submit" class="btn btn-sm btn-danger" 
                                                         onclick="return confirm('确实要删除此备份吗？');" 
                                                         title="删除备份">

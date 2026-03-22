@@ -86,7 +86,7 @@
                 </div>
                 <div class="card-body">
                     <p class="text-muted">管理数据库备份和恢复</p>
-                    <a href="{{ url_for('admin.backup_list') }}" class="btn btn-primary w-100">
+                    <a href="{{ url_for('admin_backup_list') }}" class="btn btn-primary w-100">
                         进入备份管理
                     </a>
                 </div>
@@ -100,7 +100,7 @@
                 </div>
                 <div class="card-body">
                     <p class="text-muted">导出数据为Excel或导入数据</p>
-                    <a href="{{ url_for('admin.data_management') }}" class="btn btn-success w-100">
+                    <a href="{{ url_for('admin_data') }}" class="btn btn-success w-100">
                         进入数据管理
                     </a>
                 </div>
@@ -116,7 +116,7 @@
                 </div>
                 <div class="card-body">
                     <p class="text-muted">清理旧日志，优化系统性能</p>
-                    <form method="POST" action="{{ url_for('admin.cleanup_logs') }}" class="d-inline-block w-100">
+                    <form method="POST" action="{{ url_for('admin_cleanup_logs') }}" class="d-inline-block w-100">
                         <button type="submit" class="btn btn-warning w-100" onclick="return confirm('确实要清理30天前的日志吗？');">
                             清理日志
                         </button>
@@ -132,7 +132,7 @@
                 </div>
                 <div class="card-body">
                     <p class="text-muted">查看系统环境和统计信息</p>
-                    <a href="{{ url_for('admin.system_info') }}" class="btn btn-info w-100">
+                    <a href="{{ url_for('admin_system_info') }}" class="btn btn-info w-100">
                         查看系统信息
                     </a>
                 </div>
@@ -150,7 +150,7 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <form method="POST" action="{{ url_for('admin.create_backup') }}" class="mb-2">
+                            <form method="POST" action="{{ url_for('admin_create_backup') }}" class="mb-2">
                                 <button type="submit" class="btn btn-success btn-sm">
                                     <i class="bi bi-plus-circle"></i> 立即创建备份
                                 </button>
@@ -158,7 +158,7 @@
                             </form>
                         </div>
                         <div class="col-md-6">
-                            <a href="{{ url_for('admin.backup_list') }}" class="btn btn-primary btn-sm">
+                            <a href="{{ url_for('admin_backup_list') }}" class="btn btn-primary btn-sm">
                                 <i class="bi bi-list"></i> 查看备份列表
                             </a>
                             <small class="text-muted d-block mt-1">管理和检查现有备份</small>

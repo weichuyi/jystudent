@@ -70,20 +70,20 @@
     {% if session.role == 'admin' %}
     <div class="sidebar-section">
       <div class="sidebar-section-label">系统管理</div>
-      <a class="sidebar-link {% if request.endpoint == 'admin.index' %}active{% endif %}"
-         href="{{ url_for('admin.index') }}">
+      <a class="sidebar-link {% if request.endpoint == 'admin_index' %}active{% endif %}"
+         href="{{ url_for('admin_index') }}">
         <i class="bi bi-gear-fill nav-icon"></i> 管理中心
       </a>
-      <a class="sidebar-link {% if request.endpoint == 'admin.backup_list' %}active{% endif %}"
-         href="{{ url_for('admin.backup_list') }}">
+      <a class="sidebar-link {% if request.endpoint == 'admin_backup_list' %}active{% endif %}"
+         href="{{ url_for('admin_backup_list') }}">
         <i class="bi bi-cloud-check nav-icon"></i> 备份管理
       </a>
-      <a class="sidebar-link {% if request.endpoint == 'admin.data_management' %}active{% endif %}"
-         href="{{ url_for('admin.data_management') }}">
+      <a class="sidebar-link {% if request.endpoint == 'admin_data' %}active{% endif %}"
+         href="{{ url_for('admin_data') }}">
         <i class="bi bi-download nav-icon"></i> 数据导出
       </a>
-      <a class="sidebar-link {% if request.endpoint == 'admin.system_info' %}active{% endif %}"
-         href="{{ url_for('admin.system_info') }}">
+      <a class="sidebar-link {% if request.endpoint == 'admin_system_info' %}active{% endif %}"
+         href="{{ url_for('admin_system_info') }}">
         <i class="bi bi-info-circle-fill nav-icon"></i> 系统信息
       </a>
       <a class="sidebar-link {% if 'user' in (request.endpoint or '') %}active{% endif %}"

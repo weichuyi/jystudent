@@ -1,4 +1,6 @@
 import os
+import shutil
+import platform
 from datetime import datetime
 from functools import wraps
 
@@ -1208,6 +1210,314 @@ def import_teachers():
     return redirect(url_for("list_teachers"))
 
 
+# ======================== 管理员路由 ========================
+
+@app.route("/admin/")
+@login_required
+@role_required("admin")
+def admin_index():
+    """管理员首页"""
+    backup_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backups")
+    os.makedirs(backup_dir, exist_ok=True)
+
+    backups = sorted([f for f in os.listdir(backup_dir) if f.endswith(".db")], reverse=True)
+    backup_count = len(backups)
+    latest_backup = backups[0] if backups else None
+
+    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+    log_sizes = {}
+    if os.path.exists(log_dir):
+        for f in os.listdir(log_dir):
+            if f.endswith(".log"):
+                log_sizes[f] = os.path.getsize(os.path.join(log_dir, f)) / 1024
+
+    stats = {
+        "backup_count": backup_count,
+        "latest_backup": latest_backup,
+        "log_sizes": log_sizes,
+    }
+    return render_template("admin/index.html", stats=stats)
+
+
+@app.route("/admin/backup")
+@login_required
+@role_required("admin")
+def admin_backup_list():
+    """备份列表"""
+    backup_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backups")
+    os.makedirs(backup_dir, exist_ok=True)
+
+    backups = []
+    for f in sorted(os.listdir(backup_dir), reverse=True):
+        if f.endswith(".db"):
+            fpath = os.path.join(backup_dir, f)
+            size_mb = round(os.path.getsize(fpath) / (1024 * 1024), 2)
+            mtime = datetime.fromtimestamp(os.path.getmtime(fpath)).strftime("%Y-%m-%d %H:%M:%S")
+            backups.append({"filename": f, "size_mb": size_mb, "date": mtime})
+
+    return render_template("admin/backup.html", backups=backups)
+
+
+@app.route("/admin/backup/create", methods=["POST"])
+@login_required
+@role_required("admin")
+def admin_create_backup():
+    """创建备份"""
+    backup_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backups")
+    os.makedirs(backup_dir, exist_ok=True)
+
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "instance", "students.db")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_name = f"backup_{timestamp}.db"
+    backup_path = os.path.join(backup_dir, backup_name)
+
+    try:
+        shutil.copy2(db_path, backup_path)
+        db.session.add(OperationLog(
+            user_id=session["user_id"], action="create_backup", module="admin",
+            details=f"创建备份: {backup_name}"
+        ))
+        db.session.commit()
+        flash(f"备份创建成功: {backup_name}", "success")
+    except Exception as e:
+        flash(f"备份失败: {str(e)}", "danger")
+
+    return redirect(url_for("admin_backup_list"))
+
+
+@app.route("/admin/backup/restore/<backup_file>", methods=["POST"])
+@login_required
+@role_required("admin")
+def admin_restore_backup(backup_file):
+    """恢复备份"""
+    if not backup_file.endswith(".db") or "/" in backup_file or "\\" in backup_file:
+        flash("无效的备份文件名", "danger")
+        return redirect(url_for("admin_backup_list"))
+
+    backup_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backups")
+    backup_path = os.path.join(backup_dir, backup_file)
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "instance", "students.db")
+
+    if not os.path.exists(backup_path):
+        flash("备份文件不存在", "danger")
+        return redirect(url_for("admin_backup_list"))
+
+    try:
+        shutil.copy2(backup_path, db_path)
+        db.session.add(OperationLog(
+            user_id=session["user_id"], action="restore_backup", module="admin",
+            details=f"恢复备份: {backup_file}"
+        ))
+        db.session.commit()
+        flash("备份恢复成功，请重启应用以确保数据完全生效", "success")
+    except Exception as e:
+        flash(f"恢复失败: {str(e)}", "danger")
+
+    return redirect(url_for("admin_backup_list"))
+
+
+@app.route("/admin/backup/delete/<backup_file>", methods=["POST"])
+@login_required
+@role_required("admin")
+def admin_delete_backup(backup_file):
+    """删除备份"""
+    if not backup_file.endswith(".db") or "/" in backup_file or "\\" in backup_file:
+        flash("无效的备份文件名", "danger")
+        return redirect(url_for("admin_backup_list"))
+
+    backup_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backups")
+    backup_path = os.path.join(backup_dir, backup_file)
+
+    if not os.path.exists(backup_path):
+        flash("备份文件不存在", "danger")
+        return redirect(url_for("admin_backup_list"))
+
+    try:
+        os.remove(backup_path)
+        db.session.add(OperationLog(
+            user_id=session["user_id"], action="delete_backup", module="admin",
+            details=f"删除备份: {backup_file}"
+        ))
+        db.session.commit()
+        flash(f"备份已删除: {backup_file}", "success")
+    except Exception as e:
+        flash(f"删除失败: {str(e)}", "danger")
+
+    return redirect(url_for("admin_backup_list"))
+
+
+@app.route("/admin/backup/download/<backup_file>")
+@login_required
+@role_required("admin")
+def admin_download_backup(backup_file):
+    """下载备份"""
+    if not backup_file.endswith(".db") or "/" in backup_file or "\\" in backup_file:
+        flash("无效的备份文件名", "danger")
+        return redirect(url_for("admin_backup_list"))
+
+    backup_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backups")
+    backup_path = os.path.join(backup_dir, backup_file)
+
+    if not os.path.exists(backup_path):
+        flash("备份文件不存在", "danger")
+        return redirect(url_for("admin_backup_list"))
+
+    return send_file(backup_path, as_attachment=True, download_name=backup_file)
+
+
+@app.route("/admin/data")
+@login_required
+@role_required("admin")
+def admin_data():
+    """数据管理页"""
+    return render_template("admin/data.html")
+
+
+@app.route("/admin/data/export/students", methods=["POST"])
+@login_required
+@role_required("admin")
+def admin_export_students():
+    """导出学生数据"""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "学生信息"
+    ws.append(["学号", "姓名", "性别", "班级", "电话", "邮箱", "身份证号", "户籍地址", "现居住地", "入学日期", "状态", "备注"])
+
+    for s in Student.query.all():
+        ws.append([
+            s.student_no, s.name, s.gender,
+            s.class_obj.class_name if s.class_obj else "",
+            s.phone or "", s.email or "", s.id_number or "",
+            s.home_address or "", s.current_address or "",
+            str(s.enrollment_date) if s.enrollment_date else "",
+            s.status or "", s.notes or ""
+        ])
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    filename = f"students_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return send_file(output, as_attachment=True, download_name=filename,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@app.route("/admin/data/export/scores", methods=["POST"])
+@login_required
+@role_required("admin")
+def admin_export_scores():
+    """导出成绩数据"""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "成绩数据"
+    ws.append(["学号", "学生姓名", "课程名称", "成绩", "等级", "学期", "录入时间"])
+
+    for s in Score.query.join(Enrollment).join(Student).join(Course).all():
+        enrollment = Enrollment.query.get(s.enrollment_id)
+        student = enrollment.student if enrollment else None
+        course = enrollment.course if enrollment else None
+        ws.append([
+            student.student_no if student else "",
+            student.name if student else "",
+            course.course_name if course else "",
+            s.score_value if s.score_value is not None else "",
+            s.grade or "",
+            course.semester if course else "",
+            str(s.recorded_at) if s.recorded_at else ""
+        ])
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    filename = f"scores_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return send_file(output, as_attachment=True, download_name=filename,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@app.route("/admin/data/export/courses", methods=["POST"])
+@login_required
+@role_required("admin")
+def admin_export_courses():
+    """导出课程数据"""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "课程数据"
+    ws.append(["课程编号", "课程名称", "学分", "课时", "授课教师", "学期", "状态"])
+
+    for c in Course.query.all():
+        ws.append([
+            c.course_no, c.course_name,
+            c.credits or "", c.hours or "",
+            c.teacher.name if c.teacher else "",
+            c.semester or "", c.status or ""
+        ])
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    filename = f"courses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return send_file(output, as_attachment=True, download_name=filename,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@app.route("/admin/cleanup-logs", methods=["POST"])
+@login_required
+@role_required("admin")
+def admin_cleanup_logs():
+    """清理旧日志"""
+    from datetime import timedelta
+    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+    cutoff = datetime.now() - timedelta(days=30)
+    deleted = 0
+
+    if os.path.exists(log_dir):
+        for f in os.listdir(log_dir):
+            if f.endswith(".log"):
+                fpath = os.path.join(log_dir, f)
+                if datetime.fromtimestamp(os.path.getmtime(fpath)) < cutoff:
+                    os.remove(fpath)
+                    deleted += 1
+
+    db.session.add(OperationLog(
+        user_id=session["user_id"], action="cleanup_logs", module="admin",
+        details=f"清理日志: 删除 {deleted} 个文件"
+    ))
+    db.session.commit()
+    flash(f"日志清理完成，删除了 {deleted} 个过期文件", "success")
+    return redirect(url_for("admin_index"))
+
+
+@app.route("/admin/system-info")
+@login_required
+@role_required("admin")
+def admin_system_info():
+    """系统信息"""
+    backup_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backups")
+    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+
+    backup_size = (
+        sum(os.path.getsize(os.path.join(backup_dir, f))
+            for f in os.listdir(backup_dir)
+            if os.path.isfile(os.path.join(backup_dir, f)))
+        / (1024 * 1024)
+    ) if os.path.exists(backup_dir) else 0
+
+    log_size = (
+        sum(os.path.getsize(os.path.join(log_dir, f))
+            for f in os.listdir(log_dir)
+            if os.path.isfile(os.path.join(log_dir, f)))
+        / 1024
+    ) if os.path.exists(log_dir) else 0
+
+    info = {
+        "python_version": platform.python_version(),
+        "platform": platform.platform(),
+        "processor": platform.processor(),
+        "backup_dir_size": backup_size,
+        "log_dir_size": log_size,
+    }
+    return render_template("admin/system_info.html", info=info)
+
+
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)

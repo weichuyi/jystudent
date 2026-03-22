@@ -11,7 +11,7 @@
             </h1>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('admin.index') }}">管理中心</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_index') }}">管理中心</a></li>
                     <li class="breadcrumb-item active">数据管理</li>
                 </ol>
             </nav>
@@ -20,7 +20,7 @@
 
     <div class="row">
         <div class="col-md-12">
-            <a href="{{ url_for('admin.index') }}" class="btn btn-secondary mb-3">
+            <a href="{{ url_for('admin_index') }}" class="btn btn-secondary mb-3">
                 <i class="bi bi-arrow-left"></i> 返回
             </a>
         </div>
@@ -45,7 +45,7 @@
                                         <i class="bi bi-people"></i> 学生数据
                                     </h5>
                                     <p class="card-text text-muted">包含所有学生的基本信息</p>
-                                    <form method="POST" action="{{ url_for('admin.export_students') }}" class="d-inline-block w-100">
+                                    <form method="POST" action="{{ url_for('admin_export_students') }}" class="d-inline-block w-100">
                                         <button type="submit" class="btn btn-success w-100">
                                             <i class="bi bi-download"></i> 导出为 Excel
                                         </button>
@@ -62,7 +62,7 @@
                                         <i class="bi bi-bar-chart"></i> 成绩数据
                                     </h5>
                                     <p class="card-text text-muted">包含所有的成绩记录</p>
-                                    <form method="POST" action="{{ url_for('admin.export_scores') }}" class="d-inline-block w-100">
+                                    <form method="POST" action="{{ url_for('admin_export_scores') }}" class="d-inline-block w-100">
                                         <button type="submit" class="btn btn-info w-100">
                                             <i class="bi bi-download"></i> 导出为 Excel
                                         </button>
@@ -79,7 +79,7 @@
                                         <i class="bi bi-book"></i> 课程数据
                                     </h5>
                                     <p class="card-text text-muted">包含所有的课程信息</p>
-                                    <form method="POST" action="{{ url_for('admin.export_courses') }}" class="d-inline-block w-100">
+                                    <form method="POST" action="{{ url_for('admin_export_courses') }}" class="d-inline-block w-100">
                                         <button type="submit" class="btn btn-warning w-100">
                                             <i class="bi bi-download"></i> 导出为 Excel
                                         </button>
