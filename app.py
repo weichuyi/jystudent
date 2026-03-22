@@ -1446,6 +1446,13 @@ def list_courses():
 
     q = Course.query
 
+    if session.get("role") == "teacher":
+        teacher_course_ids = _teacher_course_ids(session["user_id"])
+        if teacher_course_ids:
+            q = q.filter(Course.id.in_(teacher_course_ids))
+        else:
+            q = q.filter(Course.id == -1)
+
     if semester:
         q = q.filter(Course.semester == semester)
 
@@ -1465,7 +1472,7 @@ def list_courses():
 
 
 @app.route("/courses/add", methods=["GET", "POST"])
-@role_required("admin", "teacher")
+@role_required("admin")
 def add_course():
     teachers = Teacher.query.all()
 
@@ -2270,7 +2277,7 @@ def import_teachers():
 
 
 @app.route("/courses/import/template")
-@role_required("admin", "teacher")
+@role_required("admin")
 def course_import_template():
     headers = ["课程号*", "课程名称*", "学分", "学时", "任课教师工号", "容量", "学期", "状态(open/closed)"]
     example = ["CS101", "程序设计基础", 3, 48, "T20240001", 60, "2026-1", "open"]
@@ -2283,7 +2290,7 @@ def course_import_template():
 
 
 @app.route("/courses/import", methods=["POST"])
-@role_required("admin", "teacher")
+@role_required("admin")
 def import_courses():
     file = request.files.get("file")
     if not file or not file.filename.lower().endswith(".xlsx"):
@@ -2304,8 +2311,6 @@ def import_courses():
         return redirect(url_for("list_courses"))
 
     success, skipped, errors = 0, 0, []
-    current_teacher = Teacher.query.filter_by(user_id=session["user_id"]).first() if session.get("role") == "teacher" else None
-
     for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
         if not any(v for v in row if v not in (None, "")):
             continue
@@ -2349,13 +2354,7 @@ def import_courses():
             status = "open"
 
         teacher_id = None
-        if session.get("role") == "teacher":
-            if not current_teacher:
-                errors.append(f"第 {row_idx} 行：当前教师账号未绑定教师档案，已跳过")
-                skipped += 1
-                continue
-            teacher_id = current_teacher.id
-        elif teacher_no:
+        if teacher_no:
             teacher_obj = Teacher.query.filter_by(teacher_no=teacher_no).first()
             if not teacher_obj:
                 errors.append(f"第 {row_idx} 行：任课教师工号 {teacher_no} 不存在，已跳过")
