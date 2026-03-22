@@ -96,10 +96,10 @@
       <div class="module-icon mod-amber"><i class="bi bi-trash3-fill"></i></div>
       <div class="module-body">
         <div class="module-title">清理日志</div>
-        <div class="module-desc">删除 30 天前的过期日志文件</div>
+        <div class="module-desc">清空当前所有日志文件内容</div>
       </div>
       <form method="POST" action="{{ url_for('admin_cleanup_logs') }}"
-            onsubmit="return confirm('确认清理 30 天前的日志吗？');">
+            onsubmit="return confirm('确认清空当前所有日志吗？');">
         <button type="submit" class="adm-btn-warn">立即清理</button>
       </form>
     </div>
