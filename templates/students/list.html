@@ -1,104 +1,152 @@
-{% extends "base.html" %}
-
+﻿{% extends "base.html" %}
 {% block title %}学生管理{% endblock %}
+{% block page_title %}学生管理{% endblock %}
 
 {% block content %}
-<div class="py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h2 m-0">学生管理</h1>
-        <a class="btn btn-primary" href="{{ url_for('add_student') }}">
-            <i class="bi bi-plus-circle"></i> 新增学生
-        </a>
-    </div>
-
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-4">
-                    <input class="form-control" type="text" name="q" value="{{ query }}" placeholder="学号、姓名、专业...">
-                </div>
-                <div class="col-md-3">
-                    <select class="form-select" name="class_id">
-                        <option value="">所有班级</option>
-                        {% for cls in classes %}
-                        <option value="{{ cls.id }}" {% if cls.id == class_id %}selected{% endif %}>{{ cls.class_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <select class="form-select" name="status">
-                        <option value="">所有状态</option>
-                        <option value="enrolled" {% if status == 'enrolled' %}selected{% endif %}>在读</option>
-                        <option value="leave" {% if status == 'leave' %}selected{% endif %}>休学</option>
-                        <option value="return" {% if status == 'return' %}selected{% endif %}>复学</option>
-                        <option value="dropout" {% if status == 'dropout' %}selected{% endif %}>退学</option>
-                    </select>
-                </div>
-                <div class="col-md-2 d-grid gap-2">
-                    <button class="btn btn-outline-secondary" type="submit">搜索</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover align-middle bg-white">
-            <thead class="table-light">
-                <tr>
-                    <th>学号</th>
-                    <th>姓名</th>
-                    <th>性别</th>
-                    <th>年龄</th>
-                    <th>班级</th>
-                    <th>专业</th>
-                    <th>电话</th>
-                    <th>状态</th>
-                    <th width="120">操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if students %}
-                {% for student in students %}
-                <tr>
-                    <td><strong>{{ student.student_no }}</strong></td>
-                    <td>{{ student.name }}</td>
-                    <td>{{ student.gender or '-' }}</td>
-                    <td>{{ student.age or '-' }}</td>
-                    <td>{{ student.class_obj.class_name if student.class_obj else '-' }}</td>
-                    <td>{{ student.major or '-' }}</td>
-                    <td>{{ student.phone or '-' }}</td>
-                    <td>
-                        {% if student.status == 'enrolled' %}
-                        <span class="badge bg-success">在读</span>
-                        {% elif student.status == 'leave' %}
-                        <span class="badge bg-warning">休学</span>
-                        {% elif student.status == 'dropout' %}
-                        <span class="badge bg-danger">退学</span>
-                        {% else %}
-                        <span class="badge bg-secondary">{{ student.status }}</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class="btn-group btn-group-sm" role="group">
-                            <a class="btn btn-outline-primary" href="{{ url_for('edit_student', student_id=student.id) }}" title="编辑">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <form method="post" action="{{ url_for('delete_student', student_id=student.id) }}" style="display:inline;" onsubmit="return confirm('确认删除？');">
-                                <button class="btn btn-outline-danger btn-sm" type="submit" title="删除">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-                {% else %}
-                <tr>
-                    <td colspan="9" class="text-center py-4 text-muted">暂无学生数据</td>
-                </tr>
-                {% endif %}
-            </tbody>
-        </table>
-    </div>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">学生信息</h1>
+    <p class="page-subtitle">管理所有在籍学生信息</p>
+  </div>
+  {% if session.role in ['admin', 'teacher'] %}
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#importModal">
+      <i class="bi bi-upload"></i> 批量导入
+    </button>
+    <a href="{{ url_for('add_student') }}" class="btn btn-primary">
+      <i class="bi bi-plus-circle"></i> 新增学生
+    </a>
+  </div>
+  {% endif %}
 </div>
+
+<div class="card mb-3">
+  <div class="card-body" style="padding:.85rem 1.25rem">
+    <form method="get" class="search-bar">
+      <input class="form-control" type="text" name="q" value="{{ query }}" placeholder="学号、姓名、专业" style="width:200px;flex-shrink:0">
+      <select class="form-select" name="class_id" style="width:150px;flex-shrink:0">
+        <option value="">所有班级</option>
+        {% for cls in classes %}
+        <option value="{{ cls.id }}" {% if cls.id == class_id %}selected{% endif %}>{{ cls.class_name }}</option>
+        {% endfor %}
+      </select>
+      <select class="form-select" name="status" style="width:130px;flex-shrink:0">
+        <option value="">所有状态</option>
+        <option value="enrolled" {% if status == 'enrolled' %}selected{% endif %}>在读</option>
+        <option value="leave"    {% if status == 'leave'    %}selected{% endif %}>休学</option>
+        <option value="return"   {% if status == 'return'   %}selected{% endif %}>复学</option>
+        <option value="dropout"  {% if status == 'dropout'  %}selected{% endif %}>退学</option>
+      </select>
+      <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> 搜索</button>
+      <a href="{{ url_for('list_students') }}" class="btn btn-outline-secondary">重置</a>
+    </form>
+  </div>
+</div>
+
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>学号</th>
+          <th>姓名</th>
+          <th>性别</th>
+          <th>年龄</th>
+          <th>班级</th>
+          <th>专业</th>
+          <th>电话</th>
+          <th>状态</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if students %}
+        {% for student in students %}
+        <tr>
+          <td style="color:#94a3b8;font-size:.78rem">{{ loop.index }}</td>
+          <td><code style="background:#f1f5f9;padding:.15em .45em;border-radius:.3rem;font-size:.8rem">{{ student.student_no }}</code></td>
+          <td class="fw-semibold">{{ student.name }}</td>
+          <td>{{ student.gender or '' }}</td>
+          <td>{{ student.age or '' }}</td>
+          <td>{{ student.class_obj.class_name if student.class_obj else '' }}</td>
+          <td>{{ student.major or '' }}</td>
+          <td>{{ student.phone or '' }}</td>
+          <td>
+            {% if student.status == 'enrolled' %}
+            <span class="badge badge-success"><i class="bi bi-circle-fill" style="font-size:.45em"></i> 在读</span>
+            {% elif student.status == 'leave' %}
+            <span class="badge badge-warning">休学</span>
+            {% elif student.status == 'dropout' %}
+            <span class="badge badge-danger">退学</span>
+            {% else %}
+            <span class="badge badge-secondary">{{ student.status }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              {% if session.role in ['admin', 'teacher'] %}
+              <a href="{{ url_for('edit_student', student_id=student.id) }}" class="btn btn-sm btn-outline-primary" title="编辑">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <form method="post" action="{{ url_for('delete_student', student_id=student.id) }}" style="display:inline" onsubmit="return confirm('确认删除该学生？')">
+                <button class="btn btn-sm btn-outline-danger" type="submit" title="删除">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="10">
+            <div class="no-data">
+              <i class="bi bi-people"></i>
+              <p>暂无学生数据</p>
+            </div>
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 批量导入弹窗 -->
+{% if session.role in ['admin', 'teacher'] %}
+<div class="modal fade" id="importModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-upload me-2"></i>批量导入学生</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('import_students') }}" enctype="multipart/form-data">
+        <div class="modal-body">
+          <div class="alert alert-info" style="font-size:.84rem">
+            <i class="bi bi-info-circle me-1"></i>
+            请先下载模板，按格式填写后上传。<br>
+            账号不填默认用<strong>学号</strong>，密码不填默认 <code>123456</code>。
+          </div>
+          <div class="mb-3">
+            <a href="{{ url_for('student_import_template') }}" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-file-earmark-excel"></i> 下载导入模板
+            </a>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">选择文件（.xlsx）</label>
+            <input type="file" name="file" class="form-control" accept=".xlsx" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+          <button type="submit" class="btn btn-success"><i class="bi bi-upload"></i> 开始导入</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

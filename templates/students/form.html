@@ -1,15 +1,16 @@
 {% extends "base.html" %}
 
 {% block title %}{% if action == 'add' %}新增学生{% else %}编辑学生{% endif %}{% endblock %}
+{% block page_title %}{% if action == 'add' %}新增学生{% else %}编辑学生{% endif %}{% endblock %}
 
 {% block content %}
-<div class="py-4">
+<div class="page-header">
+  <div><h1 class="page-title">{% if action == 'add' %}新增学生{% else %}编辑学生{% endif %}</h1></div>
+  <a href="{{ url_for('list_students') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> 返回列表</a>
+</div>
+<div>
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <div class="mb-3">
-                <h1 class="h2">{% if action == 'add' %}新增学生{% else %}编辑学生{% endif %}</h1>
-            </div>
-
             <form method="post" class="card shadow-sm border-0">
                 <div class="card-body">
                     <div class="row g-3">
