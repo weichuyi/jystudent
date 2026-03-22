@@ -21,7 +21,7 @@ def main():
     spec_file = project_root / "app.spec"
 
     print("=" * 60)
-    print("学生管理系统 - PyInstaller 打包工具")
+    print("智慧校园管理平台 - PyInstaller 打包工具")
     print("=" * 60)
 
     # 清理旧的构建文件
@@ -56,11 +56,11 @@ def main():
         "--collect-submodules", "flask",
         "--collect-submodules", "flask_sqlalchemy",
         "--hidden-import", "flask_sqlalchemy",
-        "--name", "StudentManagementSystem",
+        "--name", "SmartCampusPlatform",
         "--distpath", str(dist_dir),
         "--buildpath", str(build_dir),
         "--specpath", str(project_root),
-        str(project_root / "app.py")
+        str(project_root / "run.py")
     ]
 
     try:
@@ -76,7 +76,7 @@ def main():
 
     # 显示结果
     print("\n[4/4] 打包完成！")
-    exe_file = dist_dir / "StudentManagementSystem.exe"
+    exe_file = dist_dir / "SmartCampusPlatform.exe"
     
     if exe_file.exists():
         size_mb = exe_file.stat().st_size / (1024 * 1024)
@@ -86,7 +86,7 @@ def main():
         print("\n使用方法:")
         print(f"  1. 双击运行: {exe_file.name}")
         print(f"  2. 应用会自动打开浏览器访问 http://127.0.0.1:5000")
-        print(f"  3. 默认管理员账号: admin / admin@2024")
+        print(f"  3. 默认管理员账号: admin / weichuy1")
         return 0
     else:
         print("\n✗ 打包失败，未生成 exe 文件")
