@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}管理员中心{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="mb-4">
+                <i class="bi bi-gear"></i> 系统管理中心
+            </h1>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-2">备份数量</h6>
+                            <h3>{{ stats.backup_count }}</h3>
+                        </div>
+                        <i class="bi bi-cloud-check" style="font-size: 2rem; opacity: 0.7;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-2">最近备份</h6>
+                            <small>
+                                {% if stats.latest_backup %}
+                                    {{ stats.latest_backup }}
+                                {% else %}
+                                    尚未备份
+                                {% endif %}
+                            </small>
+                        </div>
+                        <i class="bi bi-clock-history" style="font-size: 2rem; opacity: 0.7;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-2">应用日志</h6>
+                            <small>{{ "%.1f"|format(stats.log_sizes.get('app.log', 0)) }} KB</small>
+                        </div>
+                        <i class="bi bi-file-text" style="font-size: 2rem; opacity: 0.7;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-2">错误日志</h6>
+                            <small>{{ "%.1f"|format(stats.log_sizes.get('error.log', 0)) }} KB</small>
+                        </div>
+                        <i class="bi bi-exclamation-circle" style="font-size: 2rem; opacity: 0.7;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理功能卡片 -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-cloud-arrow-down"></i> 备份管理</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">管理数据库备份和恢复</p>
+                    <a href="{{ url_for('admin.backup_list') }}" class="btn btn-primary w-100">
+                        进入备份管理
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-download"></i> 数据导出/导入</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">导出数据为Excel或导入数据</p>
+                    <a href="{{ url_for('admin.data_management') }}" class="btn btn-success w-100">
+                        进入数据管理
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-white">
+                    <h5 class="mb-0"><i class="bi bi-trash"></i> 系统清理</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">清理旧日志，优化系统性能</p>
+                    <form method="POST" action="{{ url_for('admin.cleanup_logs') }}" class="d-inline-block w-100">
+                        <button type="submit" class="btn btn-warning w-100" onclick="return confirm('确实要清理30天前的日志吗？');">
+                            清理日志
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> 系统信息</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">查看系统环境和统计信息</p>
+                    <a href="{{ url_for('admin.system_info') }}" class="btn btn-info w-100">
+                        查看系统信息
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快速操作 -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="bi bi-lightning-fill"></i> 快速操作</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <form method="POST" action="{{ url_for('admin.create_backup') }}" class="mb-2">
+                                <button type="submit" class="btn btn-success btn-sm">
+                                    <i class="bi bi-plus-circle"></i> 立即创建备份
+                                </button>
+                                <small class="text-muted d-block mt-1">创建完整的数据库备份</small>
+                            </form>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{{ url_for('admin.backup_list') }}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-list"></i> 查看备份列表
+                            </a>
+                            <small class="text-muted d-block mt-1">管理和检查现有备份</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border: none;
+        border-radius: 0.5rem;
+    }
+    
+    .card-header {
+        border-radius: 0.5rem 0.5rem 0 0;
+    }
+</style>
+{% endblock %}

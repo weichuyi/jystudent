@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}备份管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1 class="mb-3">
+                <i class="bi bi-cloud-check"></i> 数据库备份管理
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin.index') }}">管理中心</a></li>
+                    <li class="breadcrumb-item active">备份管理</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- 按钮栏 -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <form method="POST" action="{{ url_for('admin.create_backup') }}" class="d-inline-block">
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="bi bi-plus-circle"></i> 创建新备份
+                </button>
+            </form>
+            <a href="{{ url_for('admin.index') }}" class="btn btn-secondary btn-lg ms-2">
+                <i class="bi bi-arrow-left"></i> 返回
+            </a>
+        </div>
+    </div>
+
+    <!-- 备份列表 -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">备份列表 (共 {{ backups|length }} 个)</h5>
+                </div>
+                <div class="card-body">
+                    {% if backups %}
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>备份文件名</th>
+                                    <th>创建时间</th>
+                                    <th>文件大小</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for backup in backups %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <i class="bi bi-file-earmark-database"></i>
+                                        <code>{{ backup.filename }}</code>
+                                    </td>
+                                    <td>{{ backup.date }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ backup.size_mb }} MB</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <!-- 恢复按钮 -->
+                                            <form method="POST" action="{{ url_for('admin.restore_backup', backup_file=backup.filename) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-success" 
+                                                        onclick="return confirm('确实要恢复此备份吗？当前数据将被覆盖！');" 
+                                                        title="恢复此备份">
+                                                    <i class="bi bi-arrow-counterclockwise"></i> 恢复
+                                                </button>
+                                            </form>
+                                            
+                                            <!-- 下载按钮 -->
+                                            <a href="{{ url_for('admin.download_backup', backup_file=backup.filename) }}" 
+                                               class="btn btn-sm btn-info" 
+                                               title="下载备份文件">
+                                                <i class="bi bi-download"></i> 下载
+                                            </a>
+                                            
+                                            <!-- 删除按钮 -->
+                                            <form method="POST" action="{{ url_for('admin.delete_backup', backup_file=backup.filename) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-danger" 
+                                                        onclick="return confirm('确实要删除此备份吗？');" 
+                                                        title="删除备份">
+                                                    <i class="bi bi-trash"></i> 删除
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle"></i> 暂无备份，请创建新备份
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 信息提示 -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="alert alert-warning" role="alert">
+                <h5><i class="bi bi-exclamation-triangle"></i> 注意事项</h5>
+                <ul class="mb-0">
+                    <li>备份文件保存在 <code>backups/</code> 目录中</li>
+                    <li><strong>恢复备份</strong>：将用备份的数据覆盖当前数据库，操作谨慎！</li>
+                    <li><strong>定期备份</strong>：建议定期创建备份以防数据丢失</li>
+                    <li>可以下载备份文件到本地存储</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border: none;
+        border-radius: 0.5rem;
+    }
+    
+    .card-header {
+        border-radius: 0.5rem 0.5rem 0 0;
+    }
+    
+    .btn-group {
+        gap: 2px;
+    }
+    
+    code {
+        background-color: #f5f5f5;
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
+</style>
+{% endblock %}
