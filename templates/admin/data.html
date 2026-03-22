@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}数据管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1 class="mb-3">
+                <i class="bi bi-download"></i> 数据导出/导入管理
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin.index') }}">管理中心</a></li>
+                    <li class="breadcrumb-item active">数据管理</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <a href="{{ url_for('admin.index') }}" class="btn btn-secondary mb-3">
+                <i class="bi bi-arrow-left"></i> 返回
+            </a>
+        </div>
+    </div>
+
+    <!-- 导出部分 -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-arrow-up-right"></i> 数据导出</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">将数据导出为Excel文件，可用于报告、分析或备份</p>
+                    
+                    <div class="row">
+                        <!-- 导出学生数据 -->
+                        <div class="col-md-4">
+                            <div class="card border-success mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <i class="bi bi-people"></i> 学生数据
+                                    </h5>
+                                    <p class="card-text text-muted">包含所有学生的基本信息</p>
+                                    <form method="POST" action="{{ url_for('admin.export_students') }}" class="d-inline-block w-100">
+                                        <button type="submit" class="btn btn-success w-100">
+                                            <i class="bi bi-download"></i> 导出为 Excel
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 导出成绩数据 -->
+                        <div class="col-md-4">
+                            <div class="card border-info mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <i class="bi bi-bar-chart"></i> 成绩数据
+                                    </h5>
+                                    <p class="card-text text-muted">包含所有的成绩记录</p>
+                                    <form method="POST" action="{{ url_for('admin.export_scores') }}" class="d-inline-block w-100">
+                                        <button type="submit" class="btn btn-info w-100">
+                                            <i class="bi bi-download"></i> 导出为 Excel
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 导出课程数据 -->
+                        <div class="col-md-4">
+                            <div class="card border-warning mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <i class="bi bi-book"></i> 课程数据
+                                    </h5>
+                                    <p class="card-text text-muted">包含所有的课程信息</p>
+                                    <form method="POST" action="{{ url_for('admin.export_courses') }}" class="d-inline-block w-100">
+                                        <button type="submit" class="btn btn-warning w-100">
+                                            <i class="bi bi-download"></i> 导出为 Excel
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导入部分 -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-arrow-down-left"></i> 数据导入</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle"></i> 
+                        <strong>说明：</strong> 数据导入功能正在开发中。目前可以通过以下方式导入数据：
+                        <ul class="mt-2 mb-0">
+                            <li>使用系统内的表单逐条添加数据</li>
+                            <li>导入现有的Excel文件（开发中）</li>
+                            <li>通过API批量导入（开发中）</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 使用指南 -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="bi bi-question-circle"></i> 使用指南</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>导出数据的用途：</h6>
+                            <ul>
+                                <li>📊 <strong>数据分析</strong>：使用Excel进行深入的数据分析</li>
+                                <li>📈 <strong>报表生成</strong>：生成各类报表和统计信息</li>
+                                <li>💾 <strong>数据备份</strong>：以Excel格式保留数据副本</li>
+                                <li>📤 <strong>数据迁移</strong>：导出后可用于迁移到其他系统</li>
+                                <li>📧 <strong>邮件发送</strong>：生成的Excel可直接邮件分享</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>导出文件说明：</h6>
+                            <ul>
+                                <li>📁 <strong>文件格式</strong>：XLSX格式（Microsoft Excel）</li>
+                                <li>⏰ <strong>时间戳</strong>：文件名包含导出时间戳</li>
+                                <li>📂 <strong>保存位置</strong>：下载到浏览器的默认下载目录</li>
+                                <li>🔒 <strong>数据完整</strong>：包含所有数据和完整信息</li>
+                                <li>✏️ <strong>可编辑</strong>：导出后可在Excel中修改和再加工</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border: none;
+        border-radius: 0.5rem;
+    }
+    
+    .card-header {
+        border-radius: 0.5rem 0.5rem 0 0;
+    }
+    
+    .card-body ul {
+        padding-left: 1.5rem;
+    }
+    
+    .card-body ul li {
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}

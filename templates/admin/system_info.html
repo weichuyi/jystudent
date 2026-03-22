@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}系统信息{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1 class="mb-3">
+                <i class="bi bi-info-circle"></i> 系统信息
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin.index') }}">管理中心</a></li>
+                    <li class="breadcrumb-item active">系统信息</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <a href="{{ url_for('admin.index') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> 返回
+            </a>
+        </div>
+    </div>
+
+    <!-- Python环境信息 -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-snake"></i> Python 环境</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-3">Python版本</dt>
+                        <dd class="col-sm-9">
+                            <code>{{ info.python_version.split('(')[0].strip() }}</code>
+                        </dd>
+
+                        <dt class="col-sm-3">操作系统</dt>
+                        <dd class="col-sm-9">
+                            <code>{{ info.platform }}</code>
+                        </dd>
+
+                        <dt class="col-sm-3">处理器</dt>
+                        <dd class="col-sm-9">
+                            <code>{{ info.processor if info.processor else '未检测' }}</code>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 存储空间信息 -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-cloud-check"></i> 备份目录</h5>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-2" style="height: 25px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {{ [info.backup_dir_size / 1000 * 100, 100]|min }}%"
+                             aria-valuenow="{{ info.backup_dir_size }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="1000">
+                            {{ "%.2f"|format(info.backup_dir_size) }} MB
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        <strong>已用：</strong> {{ "%.2f"|format(info.backup_dir_size) }} MB
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-white">
+                    <h5 class="mb-0"><i class="bi bi-file-text"></i> 日志目录</h5>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-2" style="height: 25px;">
+                        <div class="progress-bar bg-warning" role="progressbar" 
+                             style="width: {{ [info.log_dir_size / 100 * 100, 100]|min }}%"
+                             aria-valuenow="{{ info.log_dir_size }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                            {{ "%.2f"|format(info.log_dir_size) }} KB
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        <strong>已用：</strong> {{ "%.2f"|format(info.log_dir_size) }} KB
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 应用信息 -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-app"></i> 应用信息</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-3">应用名称</dt>
+                        <dd class="col-sm-9">智慧校园管理平台 (Smart Campus Platform)</dd>
+
+                        <dt class="col-sm-3">框架</dt>
+                        <dd class="col-sm-9">Flask 3.0.3</dd>
+
+                        <dt class="col-sm-3">数据库</dt>
+                        <dd class="col-sm-9">SQLite + SQLAlchemy 2.0</dd>
+
+                        <dt class="col-sm-3">表单验证</dt>
+                        <dd class="col-sm-9">WTForms 3.1</dd>
+
+                        <dt class="col-sm-3">密码加密</dt>
+                        <dd class="col-sm-9">bcrypt 4.1</dd>
+
+                        <dt class="col-sm-3">2FA支持</dt>
+                        <dd class="col-sm-9">pyotp 2.9 (TOTP)</dd>
+
+                        <dt class="col-sm-3">数据导出</dt>
+                        <dd class="col-sm-9">OpenPyXL 3.1 (Excel)</dd>
+
+                        <dt class="col-sm-3">日志系统</dt>
+                        <dd class="col-sm-9">Python logging (分级)</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 维护建议 -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="alert alert-success" role="alert">
+                <h5><i class="bi bi-check-circle"></i> 维护建议</h5>
+                <ul class="mb-0">
+                    <li>✅ <strong>定期备份</strong>：至少每周创建一次备份</li>
+                    <li>✅ <strong>清理日志</strong>：每月清理一次30天前的日志</li>
+                    <li>✅ <strong>监控空间</strong>：定期检查备份和日志目录的大小</li>
+                    <li>✅ <strong>导出报表</strong>：定期导出数据进行备份和分析</li>
+                    <li>✅ <strong>更新依赖</strong>：定期更新Python依赖包</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border: none;
+        border-radius: 0.5rem;
+    }
+    
+    .card-header {
+        border-radius: 0.5rem 0.5rem 0 0;
+    }
+    
+    code {
+        background-color: #f5f5f5;
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
+    
+    dl.row {
+        margin-bottom: 0;
+    }
+    
+    dt {
+        font-weight: 600;
+        color: #333;
+    }
+</style>
+{% endblock %}
