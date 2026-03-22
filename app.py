@@ -167,6 +167,7 @@ class OperationLog(db.Model):
     record_id = db.Column(db.Integer)
     details = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 # ======================== 权限装饰器 ========================
