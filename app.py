@@ -922,7 +922,7 @@ def add_class():
         if selected_teacher_id:
             teacher_obj = Teacher.query.get(selected_teacher_id)
             if not teacher_obj:
-                flash("所选班主任不存在，请重新选择", "error")
+                flash("所选辅导员不存在，请重新选择", "error")
                 return render_template(
                     "classes/form.html",
                     teachers=teachers,
@@ -931,7 +931,7 @@ def add_class():
                     action="add",
                 )
             if not teacher_obj.user_id:
-                flash("所选教师未绑定系统账号，暂时不能设为班主任", "error")
+                flash("所选教师未绑定系统账号，暂时不能设为辅导员", "error")
                 return render_template(
                     "classes/form.html",
                     teachers=teachers,
@@ -940,7 +940,7 @@ def add_class():
                     action="add",
                 )
             if not teacher_obj.user or teacher_obj.user.role != "teacher":
-                flash("班主任必须是教师角色账号", "error")
+                flash("辅导员必须是教师角色账号", "error")
                 return render_template(
                     "classes/form.html",
                     teachers=teachers,
@@ -1015,7 +1015,7 @@ def edit_class(class_id):
         if selected_teacher_id:
             teacher_obj = Teacher.query.get(selected_teacher_id)
             if not teacher_obj:
-                flash("所选班主任不存在，请重新选择", "error")
+                flash("所选辅导员不存在，请重新选择", "error")
                 return render_template(
                     "classes/form.html",
                     teachers=teachers,
@@ -1024,7 +1024,7 @@ def edit_class(class_id):
                     action="edit",
                 )
             if not teacher_obj.user_id:
-                flash("所选教师未绑定系统账号，暂时不能设为班主任", "error")
+                flash("所选教师未绑定系统账号，暂时不能设为辅导员", "error")
                 return render_template(
                     "classes/form.html",
                     teachers=teachers,
@@ -1033,7 +1033,7 @@ def edit_class(class_id):
                     action="edit",
                 )
             if not teacher_obj.user or teacher_obj.user.role != "teacher":
-                flash("班主任必须是教师角色账号", "error")
+                flash("辅导员必须是教师角色账号", "error")
                 return render_template(
                     "classes/form.html",
                     teachers=teachers,
@@ -1385,7 +1385,7 @@ def delete_teacher(teacher_id):
         )
         db.session.add(log)
 
-        # 先清理班级上的班主任引用，避免后续删除教师账号时产生关联问题。
+        # 先清理班级上的辅导员引用，避免后续删除教师账号时产生关联问题。
         Class.query.filter_by(headteacher_id=teacher.user_id).update({"headteacher_id": None})
 
         user_deleted = False
@@ -1643,19 +1643,9 @@ def list_scores():
         q = Enrollment.query.filter_by(student_id=student.id)
         enrollments = q.all()
     elif session.get("role") == "teacher":
-        managed_ids = _teacher_managed_class_ids(session["user_id"])
         teacher_course_ids = _teacher_course_ids(session["user_id"])
-        if managed_ids:
-            q = (
-                Enrollment.query
-                .join(Student, Enrollment.student_id == Student.id)
-                .filter(Student.class_id.in_(managed_ids))
-            )
-            if teacher_course_ids:
-                q = q.filter(Enrollment.course_id.in_(teacher_course_ids))
-            else:
-                q = q.filter(Enrollment.id == -1)
-            enrollments = q.all()
+        if teacher_course_ids:
+            enrollments = Enrollment.query.filter(Enrollment.course_id.in_(teacher_course_ids)).all()
         else:
             enrollments = []
     else:
@@ -1671,12 +1661,6 @@ def record_score_manual():
     courses_q = Course.query
 
     if session.get("role") == "teacher":
-        managed_ids = _teacher_managed_class_ids(session["user_id"])
-        if managed_ids:
-            students_q = students_q.filter(Student.class_id.in_(managed_ids))
-        else:
-            students_q = students_q.filter(Student.id == -1)
-
         teacher_course_ids = _teacher_course_ids(session["user_id"])
         if teacher_course_ids:
             courses_q = courses_q.filter(Course.id.in_(teacher_course_ids))
@@ -1719,11 +1703,6 @@ def record_score_manual():
             )
 
         if session.get("role") == "teacher":
-            managed_ids = _teacher_managed_class_ids(session["user_id"])
-            if student.class_id not in managed_ids:
-                flash("你只能录入自己负责班级学生的成绩", "danger")
-                return redirect(url_for("record_score_manual"))
-
             teacher_course_ids = _teacher_course_ids(session["user_id"])
             if course.id not in teacher_course_ids:
                 flash("你只能录入自己任课课程的成绩", "danger")
@@ -1796,11 +1775,6 @@ def record_score(enrollment_id):
     enrollment = Enrollment.query.get_or_404(enrollment_id)
 
     if session.get("role") == "teacher":
-        managed_ids = _teacher_managed_class_ids(session["user_id"])
-        if enrollment.student.class_id not in managed_ids:
-            flash("你只能录入自己负责班级学生的成绩", "error")
-            return redirect(url_for("list_scores"))
-
         teacher_course_ids = _teacher_course_ids(session["user_id"])
         if enrollment.course_id not in teacher_course_ids:
             flash("你只能录入自己任课课程的成绩", "error")
@@ -2012,7 +1986,7 @@ def delete_user(user_id):
 
     managed_classes = Class.query.filter_by(headteacher_id=user.id).count()
     if managed_classes > 0:
-        flash("该用户仍担任班主任，请先调整班级班主任", "error")
+        flash("该用户仍担任辅导员，请先调整班级辅导员", "error")
         return redirect(url_for("list_users"))
 
     try:
