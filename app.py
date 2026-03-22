@@ -20,6 +20,12 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
+course_teacher_links = db.Table(
+    "course_teacher_links",
+    db.Column("course_id", db.Integer, db.ForeignKey("courses.id"), primary_key=True),
+    db.Column("teacher_id", db.Integer, db.ForeignKey("teachers.id"), primary_key=True),
+)
+
 
 # ======================== 模型定义 ========================
 
@@ -102,6 +108,7 @@ class Teacher(db.Model):
 
     user = db.relationship("User", backref="teacher_profile")
     courses = db.relationship("Course", backref="teacher", lazy=True)
+    co_courses = db.relationship("Course", secondary=course_teacher_links, back_populates="co_teachers")
 
 
 class Course(db.Model):
@@ -119,6 +126,7 @@ class Course(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     enrollments = db.relationship("Enrollment", backref="course", lazy=True)
+    co_teachers = db.relationship("Teacher", secondary=course_teacher_links, back_populates="co_courses")
 
 
 class Enrollment(db.Model):
@@ -268,6 +276,134 @@ def login():
     return render_template("auth/login.html")
 
 
+def _find_user_by_identifier(identifier):
+    """通过用户名/学号/教工号查找用户。"""
+    if not identifier:
+        return None
+
+    user = User.query.filter_by(username=identifier).first()
+    if user:
+        return user
+
+    student = Student.query.filter_by(student_no=identifier).first()
+    if student and student.user_id:
+        return student.user
+
+    teacher = Teacher.query.filter_by(teacher_no=identifier).first()
+    if teacher and teacher.user_id:
+        return teacher.user
+
+    return None
+
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        identifier = request.form.get("identifier", "").strip()
+
+        if not identifier:
+            flash("请输入学号、工号或用户名", "danger")
+            return render_template("auth/forgot_password.html", identifier=identifier)
+
+        user = _find_user_by_identifier(identifier)
+        if not user:
+            flash("未找到对应账号，请检查后重试", "danger")
+            return render_template("auth/forgot_password.html", identifier=identifier)
+
+        key = secrets.token_hex(3).upper()
+        expires_at = datetime.utcnow() + timedelta(minutes=10)
+
+        try:
+            db.session.add(PasswordResetKey(
+                user_id=user.id,
+                reset_key=key,
+                requested_identifier=identifier,
+                expires_at=expires_at,
+                request_ip=request.remote_addr,
+            ))
+
+            # 通过管理员操作日志回传key，管理员可在“操作日志”页面查看。
+            db.session.add(OperationLog(
+                user_id=None,
+                action="password_reset_key",
+                module="auth",
+                details=(
+                    f"忘记密码申请：账号 {user.username}（标识 {identifier}）"
+                    f"，重置Key：{key}，有效期至 {expires_at.strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+            ))
+            db.session.commit()
+            flash("申请已提交，请联系系统管理员获取重置Key（10分钟内有效）", "success")
+            return redirect(url_for("reset_password_with_key"))
+        except Exception:
+            db.session.rollback()
+            flash("申请失败，请稍后重试", "danger")
+
+    return render_template("auth/forgot_password.html", identifier="")
+
+
+@app.route("/reset-password-with-key", methods=["GET", "POST"])
+def reset_password_with_key():
+    if request.method == "POST":
+        account = request.form.get("account", "").strip()
+        key = request.form.get("key", "").strip().upper()
+        new_password = request.form.get("new_password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
+
+        if not account or not key or not new_password or not confirm_password:
+            flash("请完整填写账号、Key 和新密码", "danger")
+            return render_template("auth/reset_password_with_key.html", account=account, key=key)
+
+        if new_password != confirm_password:
+            flash("两次输入密码不一致", "danger")
+            return render_template("auth/reset_password_with_key.html", account=account, key=key)
+
+        if len(new_password) < 6:
+            flash("密码至少 6 个字符", "danger")
+            return render_template("auth/reset_password_with_key.html", account=account, key=key)
+
+        user = _find_user_by_identifier(account)
+        if not user:
+            flash("账号不存在", "danger")
+            return render_template("auth/reset_password_with_key.html", account=account, key=key)
+
+        reset_record = (
+            PasswordResetKey.query
+            .filter_by(user_id=user.id, reset_key=key, is_used=False)
+            .order_by(PasswordResetKey.created_at.desc())
+            .first()
+        )
+
+        now = datetime.utcnow()
+        if not reset_record:
+            flash("Key 无效，请重新申请", "danger")
+            return render_template("auth/reset_password_with_key.html", account=account, key=key)
+
+        if reset_record.expires_at < now:
+            flash("Key 已过期，请重新申请", "danger")
+            return render_template("auth/reset_password_with_key.html", account=account, key="")
+
+        try:
+            user.set_password(new_password)
+            reset_record.is_used = True
+            reset_record.used_at = now
+
+            db.session.add(OperationLog(
+                user_id=user.id,
+                action="reset_password_with_key",
+                module="auth",
+                details=f"账号 {user.username} 通过重置Key修改密码"
+            ))
+            db.session.commit()
+            flash("密码重置成功，请使用新密码登录", "success")
+            return redirect(url_for("login"))
+        except Exception:
+            db.session.rollback()
+            flash("密码重置失败，请稍后重试", "danger")
+
+    return render_template("auth/reset_password_with_key.html", account="", key="")
+
+
 @app.route("/logout")
 def logout():
     session.clear()
@@ -329,6 +465,22 @@ def _teacher_managed_class_ids(user_id):
     """返回教师（按用户ID）负责的班级ID列表。"""
     rows = Class.query.filter_by(headteacher_id=user_id).with_entities(Class.id).all()
     return [r[0] for r in rows]
+
+
+def _teacher_course_ids(user_id):
+    """返回教师（按用户ID）可授课课程ID列表（主讲+协同）。"""
+    teacher = Teacher.query.filter_by(user_id=user_id).first()
+    if not teacher:
+        return []
+
+    primary_rows = Course.query.filter_by(teacher_id=teacher.id).with_entities(Course.id).all()
+    secondary_rows = (
+        db.session.query(Course.id)
+        .join(course_teacher_links, Course.id == course_teacher_links.c.course_id)
+        .filter(course_teacher_links.c.teacher_id == teacher.id)
+        .all()
+    )
+    return list({r[0] for r in primary_rows + secondary_rows})
 
 @app.route("/students")
 @login_required
@@ -1299,6 +1451,7 @@ def add_course():
         credits = request.form.get("credits", type=float)
         hours = request.form.get("hours", type=int)
         teacher_id = request.form.get("teacher_id", type=int)
+        co_teacher_ids = request.form.getlist("co_teacher_ids")
         max_capacity = request.form.get("max_capacity", type=int, default=50)
         semester = request.form.get("semester", "").strip()
 
@@ -1318,6 +1471,19 @@ def add_course():
                 status="open"
             )
             db.session.add(course)
+            db.session.flush()
+
+            co_ids = []
+            for raw in co_teacher_ids:
+                try:
+                    tid = int(raw)
+                except (TypeError, ValueError):
+                    continue
+                if tid and tid != teacher_id:
+                    co_ids.append(tid)
+            if co_ids:
+                course.co_teachers = Teacher.query.filter(Teacher.id.in_(list(set(co_ids)))).all()
+
             db.session.commit()
 
             log = OperationLog(
@@ -1344,16 +1510,30 @@ def add_course():
 @app.route("/enrollments")
 @login_required
 def list_enrollments():
+    status = request.args.get("status", "").strip()
+    q = Enrollment.query.join(Course, Enrollment.course_id == Course.id).join(Student, Enrollment.student_id == Student.id)
+
     if session.get("role") == "student":
         student = Student.query.filter_by(user_id=session["user_id"]).first()
         if not student:
             flash("当前账号未绑定学生档案，请联系管理员处理", "warning")
             return redirect(url_for("dashboard"))
-        enrollments = Enrollment.query.filter_by(student_id=student.id).all()
+        q = q.filter(Enrollment.student_id == student.id)
+    elif session.get("role") == "teacher":
+        managed_ids = _teacher_managed_class_ids(session["user_id"])
+        if managed_ids:
+            q = q.filter(Student.class_id.in_(managed_ids))
+        else:
+            q = q.filter(Enrollment.id == -1)
     else:
-        enrollments = Enrollment.query.all()
+        q = q
 
-    return render_template("enrollments/list.html", enrollments=enrollments)
+    if status:
+        q = q.filter(Enrollment.status == status)
+
+    enrollments = q.order_by(Enrollment.enrollment_date.desc()).all()
+
+    return render_template("enrollments/list.html", enrollments=enrollments, status=status)
 
 
 @app.route("/enrollments/add/<int:course_id>", methods=["POST"])
@@ -1407,6 +1587,49 @@ def add_enrollment(course_id):
     return redirect(url_for("list_courses"))
 
 
+@app.route("/enrollments/withdraw/<int:enrollment_id>", methods=["POST"])
+@login_required
+def withdraw_enrollment(enrollment_id):
+    enrollment = Enrollment.query.get_or_404(enrollment_id)
+
+    if enrollment.status == "withdrawn":
+        flash("该记录已退课", "warning")
+        return redirect(url_for("list_enrollments"))
+
+    role = session.get("role")
+    if role == "student":
+        student = Student.query.filter_by(user_id=session["user_id"]).first()
+        if not student or enrollment.student_id != student.id:
+            flash("你只能退自己的课", "danger")
+            return redirect(url_for("list_enrollments"))
+    elif role == "teacher":
+        managed_ids = _teacher_managed_class_ids(session["user_id"])
+        if enrollment.student.class_id not in managed_ids:
+            flash("你只能操作自己负责班级的选课记录", "danger")
+            return redirect(url_for("list_enrollments"))
+
+    try:
+        enrollment.status = "withdrawn"
+        enrollment.completion_date = datetime.utcnow()
+        db.session.commit()
+
+        db.session.add(OperationLog(
+            user_id=session["user_id"],
+            action="withdraw",
+            module="enrollment",
+            record_id=enrollment.id,
+            details=f"退课：{enrollment.student.name}-{enrollment.course.course_name}"
+        ))
+        db.session.commit()
+
+        flash("退课成功", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"退课失败：{str(e)}", "danger")
+
+    return redirect(url_for("list_enrollments"))
+
+
 # ======================== 成绩管理 ========================
 
 @app.route("/scores")
@@ -1421,19 +1644,150 @@ def list_scores():
         enrollments = q.all()
     elif session.get("role") == "teacher":
         managed_ids = _teacher_managed_class_ids(session["user_id"])
+        teacher_course_ids = _teacher_course_ids(session["user_id"])
         if managed_ids:
-            enrollments = (
+            q = (
                 Enrollment.query
                 .join(Student, Enrollment.student_id == Student.id)
                 .filter(Student.class_id.in_(managed_ids))
-                .all()
             )
+            if teacher_course_ids:
+                q = q.filter(Enrollment.course_id.in_(teacher_course_ids))
+            else:
+                q = q.filter(Enrollment.id == -1)
+            enrollments = q.all()
         else:
             enrollments = []
     else:
         enrollments = Enrollment.query.all()
 
     return render_template("scores/list.html", enrollments=enrollments)
+
+
+@app.route("/scores/record-manual", methods=["GET", "POST"])
+@role_required("admin", "teacher")
+def record_score_manual():
+    students_q = Student.query
+    courses_q = Course.query
+
+    if session.get("role") == "teacher":
+        managed_ids = _teacher_managed_class_ids(session["user_id"])
+        if managed_ids:
+            students_q = students_q.filter(Student.class_id.in_(managed_ids))
+        else:
+            students_q = students_q.filter(Student.id == -1)
+
+        teacher_course_ids = _teacher_course_ids(session["user_id"])
+        if teacher_course_ids:
+            courses_q = courses_q.filter(Course.id.in_(teacher_course_ids))
+        else:
+            courses_q = courses_q.filter(Course.id == -1)
+
+    students = students_q.order_by(Student.student_no.asc()).all()
+    courses = courses_q.order_by(Course.course_no.asc()).all()
+
+    if request.method == "POST":
+        student_id = request.form.get("student_id", type=int)
+        course_id = request.form.get("course_id", type=int)
+        score_value = request.form.get("score", type=float)
+        grade = request.form.get("grade", "").strip()
+
+        if not student_id or not course_id:
+            flash("请选择学生和课程", "danger")
+            return render_template(
+                "scores/manual_form.html",
+                students=students,
+                courses=courses,
+                selected_student_id=student_id,
+                selected_course_id=course_id,
+                score_value=request.form.get("score", "").strip(),
+                grade=grade,
+            )
+
+        student = Student.query.get(student_id)
+        course = Course.query.get(course_id)
+        if not student or not course:
+            flash("学生或课程不存在", "danger")
+            return render_template(
+                "scores/manual_form.html",
+                students=students,
+                courses=courses,
+                selected_student_id=student_id,
+                selected_course_id=course_id,
+                score_value=request.form.get("score", "").strip(),
+                grade=grade,
+            )
+
+        if session.get("role") == "teacher":
+            managed_ids = _teacher_managed_class_ids(session["user_id"])
+            if student.class_id not in managed_ids:
+                flash("你只能录入自己负责班级学生的成绩", "danger")
+                return redirect(url_for("record_score_manual"))
+
+            teacher_course_ids = _teacher_course_ids(session["user_id"])
+            if course.id not in teacher_course_ids:
+                flash("你只能录入自己任课课程的成绩", "danger")
+                return redirect(url_for("record_score_manual"))
+
+        if score_value is None or score_value < 0 or score_value > 100:
+            flash("成绩必须在 0-100 之间", "danger")
+            return render_template(
+                "scores/manual_form.html",
+                students=students,
+                courses=courses,
+                selected_student_id=student_id,
+                selected_course_id=course_id,
+                score_value=request.form.get("score", "").strip(),
+                grade=grade,
+            )
+
+        if not grade:
+            if score_value >= 90:
+                grade = "A"
+            elif score_value >= 80:
+                grade = "B"
+            elif score_value >= 70:
+                grade = "C"
+            elif score_value >= 60:
+                grade = "D"
+            else:
+                grade = "F"
+
+        enrollment = Enrollment.query.filter_by(student_id=student_id, course_id=course_id).first()
+        try:
+            if not enrollment:
+                enrollment = Enrollment(student_id=student_id, course_id=course_id, status="enrolled")
+                db.session.add(enrollment)
+                db.session.flush()
+
+            enrollment.score = score_value
+            enrollment.grade = grade
+            db.session.commit()
+
+            db.session.add(OperationLog(
+                user_id=session["user_id"],
+                action="record_score",
+                module="score",
+                record_id=enrollment.id,
+                details=f"手动录入成绩：{student.name}-{course.course_name} {score_value}分"
+            ))
+            db.session.commit()
+
+            flash("成绩录入成功", "success")
+            return redirect(url_for("list_scores"))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"录入失败：{str(e)}", "danger")
+
+    return render_template(
+        "scores/manual_form.html",
+        students=students,
+        courses=courses,
+        selected_student_id=None,
+        selected_course_id=None,
+        score_value="",
+        grade="",
+    )
 
 
 @app.route("/scores/record/<int:enrollment_id>", methods=["GET", "POST"])
@@ -1445,6 +1799,11 @@ def record_score(enrollment_id):
         managed_ids = _teacher_managed_class_ids(session["user_id"])
         if enrollment.student.class_id not in managed_ids:
             flash("你只能录入自己负责班级学生的成绩", "error")
+            return redirect(url_for("list_scores"))
+
+        teacher_course_ids = _teacher_course_ids(session["user_id"])
+        if enrollment.course_id not in teacher_course_ids:
+            flash("你只能录入自己任课课程的成绩", "error")
             return redirect(url_for("list_scores"))
 
     if request.method == "POST":
@@ -1485,8 +1844,43 @@ def record_score(enrollment_id):
 @app.route("/ops-log")
 @role_required("admin")
 def list_ops_log():
+    now = datetime.utcnow()
+    key_status = request.args.get("key_status", "valid").strip().lower()
     logs = OperationLog.query.order_by(OperationLog.created_at.desc()).limit(500).all()
-    return render_template("admin/logs.html", logs=logs)
+    reset_keys_q = (
+        db.session.query(PasswordResetKey, User.username, User.full_name)
+        .outerjoin(User, PasswordResetKey.user_id == User.id)
+    )
+
+    if key_status == "used":
+        reset_keys_q = reset_keys_q.filter(PasswordResetKey.is_used.is_(True))
+    elif key_status == "expired":
+        reset_keys_q = reset_keys_q.filter(
+            PasswordResetKey.is_used.is_(False),
+            PasswordResetKey.expires_at < now,
+        )
+    elif key_status == "all":
+        pass
+    else:
+        key_status = "valid"
+        reset_keys_q = reset_keys_q.filter(
+            PasswordResetKey.is_used.is_(False),
+            PasswordResetKey.expires_at >= now,
+        )
+
+    reset_keys = (
+        reset_keys_q
+        .order_by(PasswordResetKey.created_at.desc())
+        .limit(200)
+        .all()
+    )
+    return render_template(
+        "admin/logs.html",
+        logs=logs,
+        reset_keys=reset_keys,
+        key_status=key_status,
+        now=now,
+    )
 
 
 @app.route("/users")
@@ -1871,6 +2265,134 @@ def import_teachers():
     flash(f"导入完成：成功 {success} 条，跳过 {skipped} 条",
           "success" if success > 0 else "warning")
     return redirect(url_for("list_teachers"))
+
+
+@app.route("/courses/import/template")
+@role_required("admin", "teacher")
+def course_import_template():
+    headers = ["课程号*", "课程名称*", "学分", "学时", "任课教师工号", "容量", "学期", "状态(open/closed)"]
+    example = ["CS101", "程序设计基础", 3, 48, "T20240001", 60, "2026-1", "open"]
+    wb = _make_template_workbook(headers, example, "课程导入模板")
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name="课程导入模板.xlsx",
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@app.route("/courses/import", methods=["POST"])
+@role_required("admin", "teacher")
+def import_courses():
+    file = request.files.get("file")
+    if not file or not file.filename.lower().endswith(".xlsx"):
+        flash("请上传 .xlsx 格式的文件", "danger")
+        return redirect(url_for("list_courses"))
+
+    file.stream.seek(0, 2)
+    if file.stream.tell() > 5 * 1024 * 1024:
+        flash("文件大小不能超过 5MB", "danger")
+        return redirect(url_for("list_courses"))
+    file.stream.seek(0)
+
+    try:
+        wb = load_workbook(file.stream, read_only=True, data_only=True)
+        ws = wb.active
+    except Exception:
+        flash("文件解析失败，请使用正确的模板", "danger")
+        return redirect(url_for("list_courses"))
+
+    success, skipped, errors = 0, 0, []
+    current_teacher = Teacher.query.filter_by(user_id=session["user_id"]).first() if session.get("role") == "teacher" else None
+
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        if not any(v for v in row if v not in (None, "")):
+            continue
+
+        def _s(v): return str(v).strip() if v is not None else ""
+
+        course_no = _s(row[0])
+        course_name = _s(row[1])
+        credits_raw = row[2]
+        hours_raw = row[3]
+        teacher_no = _s(row[4])
+        capacity_raw = row[5]
+        semester = _s(row[6])
+        status = (_s(row[7]).lower() or "open")
+
+        if not course_no or not course_name:
+            errors.append(f"第 {row_idx} 行：课程号和课程名称不能为空，已跳过")
+            skipped += 1
+            continue
+        if Course.query.filter_by(course_no=course_no).first():
+            errors.append(f"第 {row_idx} 行：课程号 {course_no} 已存在，已跳过")
+            skipped += 1
+            continue
+
+        try:
+            credits = float(credits_raw) if credits_raw not in (None, "") else None
+        except (TypeError, ValueError):
+            credits = None
+
+        try:
+            hours = int(float(str(hours_raw))) if hours_raw not in (None, "") else None
+        except (TypeError, ValueError):
+            hours = None
+
+        try:
+            max_capacity = int(float(str(capacity_raw))) if capacity_raw not in (None, "") else 50
+        except (TypeError, ValueError):
+            max_capacity = 50
+
+        if status not in ["open", "closed"]:
+            status = "open"
+
+        teacher_id = None
+        if session.get("role") == "teacher":
+            if not current_teacher:
+                errors.append(f"第 {row_idx} 行：当前教师账号未绑定教师档案，已跳过")
+                skipped += 1
+                continue
+            teacher_id = current_teacher.id
+        elif teacher_no:
+            teacher_obj = Teacher.query.filter_by(teacher_no=teacher_no).first()
+            if not teacher_obj:
+                errors.append(f"第 {row_idx} 行：任课教师工号 {teacher_no} 不存在，已跳过")
+                skipped += 1
+                continue
+            teacher_id = teacher_obj.id
+
+        try:
+            course = Course(
+                course_no=course_no,
+                course_name=course_name,
+                credits=credits,
+                hours=hours,
+                teacher_id=teacher_id,
+                max_capacity=max_capacity if max_capacity > 0 else 50,
+                semester=semester,
+                status=status,
+            )
+            db.session.add(course)
+            db.session.commit()
+            success += 1
+        except Exception as e:
+            db.session.rollback()
+            errors.append(f"第 {row_idx} 行：{course_name}({course_no}) 导入失败 — {e}")
+            skipped += 1
+
+    db.session.add(OperationLog(
+        user_id=session["user_id"], action="batch_import", module="course",
+        details=f"批量导入课程：成功 {success} 条，跳过 {skipped} 条"
+    ))
+    db.session.commit()
+
+    for err in errors[:5]:
+        flash(err, "warning")
+    if len(errors) > 5:
+        flash(f"……还有 {len(errors) - 5} 条错误未显示", "warning")
+    flash(f"导入完成：成功 {success} 条，跳过 {skipped} 条",
+          "success" if success > 0 else "warning")
+    return redirect(url_for("list_courses"))
 
 
 # ======================== 管理员路由 ========================
