@@ -1,7 +1,8 @@
 import os
 import shutil
 import platform
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta
 from functools import wraps
 
 import io
@@ -170,6 +171,20 @@ class OperationLog(db.Model):
     details = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class PasswordResetKey(db.Model):
+    """密码重置Key：用于忘记密码场景"""
+    __tablename__ = "password_reset_keys"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    reset_key = db.Column(db.String(32), nullable=False)
+    requested_identifier = db.Column(db.String(50))
+    is_used = db.Column(db.Boolean, default=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    used_at = db.Column(db.DateTime)
+    request_ip = db.Column(db.String(45))
 
 
 # ======================== 权限装饰器 ========================

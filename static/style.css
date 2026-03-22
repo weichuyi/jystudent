@@ -39,6 +39,110 @@ body {
   margin: 0;
 }
 
+.global-signature {
+  position: fixed;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: rgba(100, 116, 139, .85);
+  pointer-events: none;
+  user-select: none;
+  z-index: 1200;
+}
+
+/* Global flash popups */
+.flash-popups {
+  position: fixed;
+  top: calc(var(--topbar-height) + 12px);
+  right: 16px;
+  z-index: 1300;
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+  max-width: min(460px, calc(100vw - 24px));
+}
+
+.flash-popup {
+  display: grid;
+  grid-template-columns: 28px 1fr 24px;
+  align-items: start;
+  gap: .55rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-left: 4px solid #94a3b8;
+  border-radius: .7rem;
+  box-shadow: var(--shadow);
+  padding: .62rem .72rem;
+  color: var(--text);
+  animation: popup-in .18s ease-out;
+}
+
+.flash-popup.flash-success { border-left-color: #10b981; }
+.flash-popup.flash-danger { border-left-color: #ef4444; }
+.flash-popup.flash-warning { border-left-color: #f59e0b; }
+.flash-popup.flash-info { border-left-color: #3b82f6; }
+
+.flash-popup-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: .5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: .95rem;
+}
+.flash-popup.flash-success .flash-popup-icon { color: #059669; background: #ecfdf5; }
+.flash-popup.flash-danger .flash-popup-icon { color: #dc2626; background: #fef2f2; }
+.flash-popup.flash-warning .flash-popup-icon { color: #d97706; background: #fffbeb; }
+.flash-popup.flash-info .flash-popup-icon { color: #2563eb; background: #eff6ff; }
+
+.flash-popup-body {
+  font-size: .84rem;
+  line-height: 1.45;
+  word-break: break-word;
+  padding-top: .08rem;
+}
+
+.flash-popup-close {
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: .35rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.flash-popup-close:hover { background: #f1f5f9; color: #64748b; }
+
+.flash-popup.closing {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: all .18s ease;
+}
+
+@keyframes popup-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+  .flash-popups {
+    left: 10px;
+    right: 10px;
+    max-width: none;
+    top: calc(var(--topbar-height) + 8px);
+  }
+}
+
 /* ---- Scrollbar ---- */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -64,31 +168,38 @@ body {
 }
 
 .sidebar-brand {
-  padding: 1.08rem .95rem .68rem;
+  padding: 1.15rem .95rem .85rem;
   border-bottom: 1px solid rgba(255,255,255,.1);
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
 .sidebar-brand .brand-logo {
-  width: 36px; height: 36px;
-  background: rgba(255,255,255,.18);
+  width: 54px; height: 54px;
+  background: #ffffff;
   border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.1rem;
-  margin-bottom: .35rem;
+  box-shadow: 0 6px 16px rgba(0,0,0,.2), inset 0 0 0 1px rgba(15,23,42,.08);
+  margin: 0 auto .55rem;
+}
+
+.sidebar-brand .brand-logo img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+  filter: none;
 }
 
 .sidebar-brand .brand-name {
   color: #fff;
-  font-size: .9rem;
+  font-size: .98rem;
   font-weight: 700;
   letter-spacing: .02em;
-  line-height: 1.2;
-}
-
-.sidebar-brand .brand-sub {
-  color: rgba(255,255,255,.45);
-  font-size: .66rem;
+  line-height: 1.3;
 }
 
 .sidebar-nav {
@@ -98,6 +209,10 @@ body {
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
+}
+
+.sidebar-nav.pending-restore {
+  visibility: hidden;
 }
 
 .sidebar-section {
@@ -537,6 +652,32 @@ body {
   cursor: not-allowed;
 }
 
+/* Table action buttons: keep icon actions visually consistent */
+.table-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.table-actions form {
+  margin: 0;
+}
+
+.table-actions .btn-icon {
+  width: 2.15rem;
+  height: 2.15rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.table-actions .btn-icon i {
+  font-size: .9rem;
+  line-height: 1;
+}
+
 /* ================================================
    FORMS
    ================================================ */
@@ -622,11 +763,20 @@ body {
 
 .login-icon {
   width: 62px; height: 62px;
-  background: rgba(255,255,255,.2);
+  background: #ffffff;
   border-radius: 16px;
   display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 20px rgba(0,0,0,.22), inset 0 0 0 1px rgba(15,23,42,.08);
   font-size: 1.7rem;
   margin: 0 auto 1rem;
+}
+
+.login-icon img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  display: block;
+  filter: none;
 }
 
 .login-card-header h1 {
