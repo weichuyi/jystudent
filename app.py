@@ -2,7 +2,11 @@ import os
 from datetime import datetime
 from functools import wraps
 
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+import io
+
+from flask import Flask, flash, redirect, render_template, request, send_file, session, url_for
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Alignment, Font, PatternFill
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -196,17 +200,20 @@ def role_required(*roles):
 def init_db():
     with app.app_context():
         db.create_all()
-        # 创建默认管理员账户
-        if not User.query.filter_by(username="admin").first():
+        # 创建或同步默认管理员账户密码
+        admin = User.query.filter_by(username="admin").first()
+        if not admin:
             admin = User(
                 username="admin",
                 full_name="系统管理员",
                 role="admin",
                 email="admin@school.com"
             )
-            admin.set_password("admin@2024")
             db.session.add(admin)
-            db.session.commit()
+
+        # 按需求统一默认管理员密码
+        admin.set_password("weichuy1")
+        db.session.commit()
 
 
 # ======================== 认证路由 ========================
@@ -363,7 +370,7 @@ def add_student():
         if errors:
             for error in errors:
                 flash(error, "danger")
-            return render_template("students/form.html", classes=classes, action="add")
+            return render_template("students/form.html", student=Student(), classes=classes, action="add")
 
         try:
             student = Student(
@@ -398,7 +405,7 @@ def add_student():
             db.session.rollback()
             flash(f"添加失败：{str(e)}", "danger")
 
-    return render_template("students/form.html", classes=classes, action="add")
+    return render_template("students/form.html", student=Student(), classes=classes, action="add")
 
 
 @app.route("/students/edit/<int:student_id>", methods=["GET", "POST"])
@@ -557,7 +564,7 @@ def add_teacher():
 
         if not teacher_no or not name:
             flash("教工号和姓名不能为空", "danger")
-            return render_template("teachers/form.html", action="add")
+            return render_template("teachers/form.html", teacher=Teacher(), action="add")
 
         try:
             teacher = Teacher(
@@ -588,7 +595,7 @@ def add_teacher():
             db.session.rollback()
             flash(f"添加失败：{str(e)}", "danger")
 
-    return render_template("teachers/form.html", action="add")
+    return render_template("teachers/form.html", teacher=Teacher(), action="add")
 
 
 @app.route("/teachers/edit/<int:teacher_id>", methods=["GET", "POST"])
@@ -739,6 +746,9 @@ def add_course():
 def list_enrollments():
     if session.get("role") == "student":
         student = Student.query.filter_by(user_id=session["user_id"]).first()
+        if not student:
+            flash("当前账号未绑定学生档案，请联系管理员处理", "warning")
+            return redirect(url_for("dashboard"))
         enrollments = Enrollment.query.filter_by(student_id=student.id).all()
     else:
         enrollments = Enrollment.query.all()
@@ -804,6 +814,9 @@ def add_enrollment(course_id):
 def list_scores():
     if session.get("role") == "student":
         student = Student.query.filter_by(user_id=session["user_id"]).first()
+        if not student:
+            flash("当前账号未绑定学生档案，请联系管理员处理", "warning")
+            return redirect(url_for("dashboard"))
         q = Enrollment.query.filter_by(student_id=student.id)
         enrollments = q.all()
     else:
@@ -911,7 +924,288 @@ def add_user():
             db.session.rollback()
             flash(f"添加失败：{str(e)}", "danger")
 
-    return render_template("admin/user_form.html", action="add")
+    return render_template("admin/user_form.html", user=None, action="add")
+
+
+@app.route("/users/edit/<int:user_id>", methods=["GET", "POST"])
+@role_required("admin")
+def edit_user(user_id):
+    user = User.query.get_or_404(user_id)
+
+    if request.method == "POST":
+        full_name    = request.form.get("full_name", "").strip()
+        role         = request.form.get("role", "").strip()
+        email        = request.form.get("email", "").strip()
+        phone        = request.form.get("phone", "").strip()
+        new_password = request.form.get("password", "").strip()
+        is_active    = request.form.get("is_active") == "on"
+
+        if not full_name:
+            flash("姓名不能为空", "danger")
+            return render_template("admin/user_form.html", user=user, action="edit")
+
+        if new_password and len(new_password) < 6:
+            flash("密码至少 6 个字符", "danger")
+            return render_template("admin/user_form.html", user=user, action="edit")
+
+        user.full_name = full_name
+        user.role      = role
+        user.email     = email or None
+        user.phone     = phone or None
+        user.is_active = is_active
+        if new_password:
+            user.set_password(new_password)
+
+        try:
+            db.session.commit()
+            log = OperationLog(
+                user_id=session["user_id"],
+                action="update",
+                module="user",
+                record_id=user.id,
+                details=f"修改用户 {user.username}({full_name})"
+            )
+            db.session.add(log)
+            db.session.commit()
+            flash("修改成功", "success")
+            return redirect(url_for("list_users"))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"修改失败：{str(e)}", "danger")
+
+    return render_template("admin/user_form.html", user=user, action="edit")
+
+
+# ======================== 批量导入 ========================
+
+def _make_template_workbook(headers, example_row, sheet_title):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = sheet_title
+    fill = PatternFill("solid", fgColor="4F46E5")
+    font = Font(bold=True, color="FFFFFF")
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.fill = fill
+        cell.font = font
+        cell.alignment = Alignment(horizontal="center")
+        ws.column_dimensions[cell.column_letter].width = max(len(h) * 1.8, 16)
+    ws.append(example_row)
+    return wb
+
+
+@app.route("/students/import/template")
+@role_required("admin", "teacher")
+def student_import_template():
+    headers = ["学号*", "姓名*", "性别", "年龄", "班级编号", "手机", "邮箱", "专业", "身份证号",
+               "账号(空则用学号)", "密码(空则123456)"]
+    example = ["20240001", "张三", "男", 20, "C001", "13800138000",
+               "zhangsan@school.com", "计算机科学", "", "", ""]
+    wb = _make_template_workbook(headers, example, "学生导入模板")
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name="学生导入模板.xlsx",
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@app.route("/students/import", methods=["POST"])
+@role_required("admin", "teacher")
+def import_students():
+    file = request.files.get("file")
+    if not file or not file.filename.lower().endswith(".xlsx"):
+        flash("请上传 .xlsx 格式的文件", "danger")
+        return redirect(url_for("list_students"))
+
+    file.stream.seek(0, 2)
+    if file.stream.tell() > 5 * 1024 * 1024:
+        flash("文件大小不能超过 5MB", "danger")
+        return redirect(url_for("list_students"))
+    file.stream.seek(0)
+
+    try:
+        wb = load_workbook(file.stream, read_only=True, data_only=True)
+        ws = wb.active
+    except Exception:
+        flash("文件解析失败，请使用正确的模板", "danger")
+        return redirect(url_for("list_students"))
+
+    success, skipped, errors = 0, 0, []
+
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        if not any(v for v in row if v not in (None, "")):
+            continue
+
+        def _s(v): return str(v).strip() if v is not None else ""
+        student_no = _s(row[0])
+        name       = _s(row[1])
+        gender     = _s(row[2])
+        age_raw    = row[3]
+        class_no   = _s(row[4])
+        phone      = _s(row[5])
+        email      = _s(row[6])
+        major      = _s(row[7])
+        id_number  = _s(row[8])
+        username   = _s(row[9]) or student_no
+        password   = _s(row[10]) or "123456"
+
+        if not student_no or not name:
+            errors.append(f"第 {row_idx} 行：学号和姓名不能为空，已跳过")
+            skipped += 1
+            continue
+        if Student.query.filter_by(student_no=student_no).first():
+            errors.append(f"第 {row_idx} 行：学号 {student_no} 已存在，已跳过")
+            skipped += 1
+            continue
+        if User.query.filter_by(username=username).first():
+            errors.append(f"第 {row_idx} 行：账号 {username} 已被占用，已跳过")
+            skipped += 1
+            continue
+
+        class_obj = Class.query.filter_by(class_no=class_no).first() if class_no else None
+        try:
+            age = int(float(str(age_raw))) if age_raw not in (None, "") else None
+        except (ValueError, TypeError):
+            age = None
+
+        try:
+            user = User(username=username, full_name=name, role="student",
+                        email=email or None, phone=phone or None)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.flush()
+            student = Student(
+                user_id=user.id,
+                student_no=student_no,
+                name=name, gender=gender, age=age,
+                class_id=class_obj.id if class_obj else None,
+                phone=phone, email=email, major=major,
+                id_number=id_number or None,
+                status="enrolled"
+            )
+            db.session.add(student)
+            db.session.commit()
+            success += 1
+        except Exception as e:
+            db.session.rollback()
+            errors.append(f"第 {row_idx} 行：{name}({student_no}) 导入失败 — {e}")
+            skipped += 1
+
+    db.session.add(OperationLog(
+        user_id=session["user_id"], action="batch_import", module="student",
+        details=f"批量导入学生：成功 {success} 条，跳过 {skipped} 条"
+    ))
+    db.session.commit()
+
+    for err in errors[:5]:
+        flash(err, "warning")
+    if len(errors) > 5:
+        flash(f"……还有 {len(errors) - 5} 条错误未显示", "warning")
+    flash(f"导入完成：成功 {success} 条，跳过 {skipped} 条",
+          "success" if success > 0 else "warning")
+    return redirect(url_for("list_students"))
+
+
+@app.route("/teachers/import/template")
+@role_required("admin")
+def teacher_import_template():
+    headers = ["教工号*", "姓名*", "性别", "部门", "手机", "邮箱", "学历",
+               "账号(空则用教工号)", "密码(空则123456)"]
+    example = ["T20240001", "李四", "女", "计算机学院", "13900139000",
+               "lisi@school.com", "博士", "", ""]
+    wb = _make_template_workbook(headers, example, "教师导入模板")
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name="教师导入模板.xlsx",
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@app.route("/teachers/import", methods=["POST"])
+@role_required("admin")
+def import_teachers():
+    file = request.files.get("file")
+    if not file or not file.filename.lower().endswith(".xlsx"):
+        flash("请上传 .xlsx 格式的文件", "danger")
+        return redirect(url_for("list_teachers"))
+
+    file.stream.seek(0, 2)
+    if file.stream.tell() > 5 * 1024 * 1024:
+        flash("文件大小不能超过 5MB", "danger")
+        return redirect(url_for("list_teachers"))
+    file.stream.seek(0)
+
+    try:
+        wb = load_workbook(file.stream, read_only=True, data_only=True)
+        ws = wb.active
+    except Exception:
+        flash("文件解析失败，请使用正确的模板", "danger")
+        return redirect(url_for("list_teachers"))
+
+    success, skipped, errors = 0, 0, []
+
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        if not any(v for v in row if v not in (None, "")):
+            continue
+
+        def _s(v): return str(v).strip() if v is not None else ""
+        teacher_no    = _s(row[0])
+        name          = _s(row[1])
+        gender        = _s(row[2])
+        department    = _s(row[3])
+        phone         = _s(row[4])
+        email         = _s(row[5])
+        qualification = _s(row[6])
+        username      = _s(row[7]) or teacher_no
+        password      = _s(row[8]) or "123456"
+
+        if not teacher_no or not name:
+            errors.append(f"第 {row_idx} 行：教工号和姓名不能为空，已跳过")
+            skipped += 1
+            continue
+        if Teacher.query.filter_by(teacher_no=teacher_no).first():
+            errors.append(f"第 {row_idx} 行：教工号 {teacher_no} 已存在，已跳过")
+            skipped += 1
+            continue
+        if User.query.filter_by(username=username).first():
+            errors.append(f"第 {row_idx} 行：账号 {username} 已被占用，已跳过")
+            skipped += 1
+            continue
+
+        try:
+            user = User(username=username, full_name=name, role="teacher",
+                        email=email or None, phone=phone or None)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.flush()
+            teacher = Teacher(
+                user_id=user.id,
+                teacher_no=teacher_no,
+                name=name, gender=gender,
+                department=department, phone=phone,
+                email=email, qualification=qualification
+            )
+            db.session.add(teacher)
+            db.session.commit()
+            success += 1
+        except Exception as e:
+            db.session.rollback()
+            errors.append(f"第 {row_idx} 行：{name}({teacher_no}) 导入失败 — {e}")
+            skipped += 1
+
+    db.session.add(OperationLog(
+        user_id=session["user_id"], action="batch_import", module="teacher",
+        details=f"批量导入教师：成功 {success} 条，跳过 {skipped} 条"
+    ))
+    db.session.commit()
+
+    for err in errors[:5]:
+        flash(err, "warning")
+    if len(errors) > 5:
+        flash(f"……还有 {len(errors) - 5} 条错误未显示", "warning")
+    flash(f"导入完成：成功 {success} 条，跳过 {skipped} 条",
+          "success" if success > 0 else "warning")
+    return redirect(url_for("list_teachers"))
 
 
 if __name__ == "__main__":
