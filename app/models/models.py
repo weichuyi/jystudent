@@ -14,7 +14,7 @@ class User(BaseModel):
     password = db.Column(db.String(255), nullable=False)
     full_name = db.Column(db.String(100), nullable=False)
     role = db.Column(db.String(20), nullable=False, default="student")  # admin, teacher, student
-    email = db.Column(db.String(100), unique=True, sparse=True)
+    email = db.Column(db.String(100), unique=True)
     phone = db.Column(db.String(20))
     is_active = db.Column(db.Boolean, default=True, index=True)
     
@@ -86,7 +86,7 @@ class Student(BaseModel):
     email = db.Column(db.String(100))
     major = db.Column(db.String(100))
     status = db.Column(db.String(20), default="enrolled", index=True)  # enrolled, leave, return, dropout
-    id_number = db.Column(db.String(50), unique=True, sparse=True)
+    id_number = db.Column(db.String(50), unique=True)
     enrollment_date = db.Column(db.Date)
     
     # 关系
