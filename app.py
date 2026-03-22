@@ -1,7 +1,9 @@
 import os
+import sys
 import shutil
 import platform
 import secrets
+import logging
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -13,10 +15,41 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
 
-app = Flask(__name__)
+# 打包后 importlib 动态加载时 __name__ 不是 __main__，
+# Flask 据此推算 root_path 指向错误目录，找不到 templates/static。
+# 显式传入 root_path 一劳永逸。
+if getattr(sys, "frozen", False):
+    _app_root = sys._MEIPASS
+else:
+    _app_root = os.path.dirname(os.path.abspath(__file__))
+
+app = Flask(__name__, root_path=_app_root)
+
 app.config["SECRET_KEY"] = "student-system-secret-key-2026"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///students.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# 将运行时异常落盘，便于定位打包环境中的 500 错误。
+try:
+    if getattr(sys, "frozen", False):
+        _base_dir = os.path.dirname(sys.executable)
+    else:
+        _base_dir = os.path.dirname(os.path.abspath(__file__))
+
+    _logs_dir = os.path.join(_base_dir, "logs")
+    try:
+        os.makedirs(_logs_dir, exist_ok=True)
+    except OSError:
+        _logs_dir = os.path.join(os.getcwd(), "logs")
+        os.makedirs(_logs_dir, exist_ok=True)
+
+    _error_log = os.path.join(_logs_dir, "error.log")
+    _file_handler = logging.FileHandler(_error_log, encoding="utf-8")
+    _file_handler.setLevel(logging.ERROR)
+    _file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    app.logger.addHandler(_file_handler)
+except Exception:
+    pass  # 日志初始化失败不应阻止应用启动
 
 DEFAULT_ADMIN_USERNAME = "admin"
 DEFAULT_ADMIN_FULL_NAME = "系统管理员"
@@ -208,9 +241,17 @@ class PasswordResetKey(db.Model):
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if "user_id" not in session:
+        user_id = session.get("user_id")
+        if not user_id:
             flash("请先登录", "warning")
             return redirect(url_for("login"))
+
+        user = User.query.get(user_id)
+        if not user or not user.is_active:
+            session.clear()
+            flash("登录状态已失效，请重新登录", "warning")
+            return redirect(url_for("login"))
+
         return f(*args, **kwargs)
     return decorated_function
 
@@ -219,10 +260,17 @@ def role_required(*roles):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if "user_id" not in session:
+            user_id = session.get("user_id")
+            if not user_id:
                 flash("请先登录", "warning")
                 return redirect(url_for("login"))
-            user = User.query.get(session.get("user_id"))
+
+            user = User.query.get(user_id)
+            if not user or not user.is_active:
+                session.clear()
+                flash("登录状态已失效，请重新登录", "warning")
+                return redirect(url_for("login"))
+
             if user.role not in roles:
                 flash("权限不足", "danger")
                 return redirect(url_for("dashboard"))
@@ -460,13 +508,27 @@ def index():
 @login_required
 def dashboard():
     user = User.query.get(session["user_id"])
+    if not user:
+        session.clear()
+        flash("登录状态已失效，请重新登录", "warning")
+        return redirect(url_for("login"))
     
-    stats = {
-        "total_students": Student.query.count(),
-        "total_teachers": Teacher.query.count(),
-        "total_courses": Course.query.count(),
-        "total_classes": Class.query.count(),
-    }
+    try:
+        stats = {
+            "total_students": Student.query.count(),
+            "total_teachers": Teacher.query.count(),
+            "total_courses": Course.query.count(),
+            "total_classes": Class.query.count(),
+        }
+    except Exception:
+        app.logger.exception("dashboard statistics query failed")
+        flash("控制台统计加载失败，已使用默认值。请联系管理员检查日志。", "warning")
+        stats = {
+            "total_students": 0,
+            "total_teachers": 0,
+            "total_courses": 0,
+            "total_classes": 0,
+        }
 
     return render_template("dashboard.html", user=user, stats=stats)
 

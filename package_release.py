@@ -24,7 +24,8 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 
 PROJECT_ROOT = Path(__file__).parent
-DIST_EXE = PROJECT_ROOT / "dist" / "SmartCampusPlatform.exe"
+EXE_NAME = "SmartCampusPlatform_Fixed.exe"
+DIST_EXE = PROJECT_ROOT / "dist" / EXE_NAME
 RELEASE_DIR = PROJECT_ROOT / "release"
 
 
@@ -34,7 +35,7 @@ def run_build() -> None:
     subprocess.run(cmd, check=True)
     if not DIST_EXE.exists():
         raise FileNotFoundError(f"未找到 exe: {DIST_EXE}")
-    print(f"  ✓ 构建完成: {DIST_EXE.name}")
+    print(f"  [OK] 构建完成: {DIST_EXE.name}")
 
 
 def copy_payload(target_dir: Path, include_db: bool) -> None:
@@ -52,7 +53,7 @@ def copy_payload(target_dir: Path, include_db: bool) -> None:
             dest_instance = target_dir / "instance"
             dest_instance.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src_db, dest_instance / "students.db")
-            print("  ✓ 已包含测试数据库 instance/students.db")
+            print("  [OK] 已包含测试数据库 instance/students.db")
         else:
             print("  ! 未找到 instance/students.db，跳过数据库打包")
 
@@ -60,8 +61,8 @@ def copy_payload(target_dir: Path, include_db: bool) -> None:
     readme.write_text(
         "智慧校园管理平台 - 测试包使用说明\n"
         "================================\n\n"
-        "1. 双击 SmartCampusPlatform.exe\n"
-        "2. 浏览器将自动打开 http://127.0.0.1:5001\n"
+        f"1. 双击 {EXE_NAME}\n"
+        "2. 浏览器优先打开 http://127.0.0.1:5001（如被占用会自动切换到 5002/5003...）\n"
         "3. 默认管理员账号: admin\n"
         "4. 默认管理员密码: weichuy1\n\n"
         "说明:\n"
@@ -69,7 +70,7 @@ def copy_payload(target_dir: Path, include_db: bool) -> None:
         "- 如果未包含数据库，首次启动会自动初始化空库\n",
         encoding="utf-8",
     )
-    print("  ✓ 已生成 START_HERE.txt")
+    print("  [OK] 已生成 START_HERE.txt")
 
 
 def make_zip(target_dir: Path) -> Path:
@@ -83,7 +84,7 @@ def make_zip(target_dir: Path) -> Path:
             if path.is_file():
                 zf.write(path, arcname=path.relative_to(target_dir))
 
-    print(f"  ✓ 已生成: {zip_path.name}")
+    print(f"  [OK] 已生成: {zip_path.name}")
     return zip_path
 
 
@@ -100,7 +101,7 @@ def main() -> int:
     if not args.skip_build:
         run_build()
     elif not DIST_EXE.exists():
-        print("✗ 你选择了 --skip-build，但 exe 不存在，请先打包")
+        print("[FAIL] 你选择了 --skip-build，但 exe 不存在，请先打包")
         return 1
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

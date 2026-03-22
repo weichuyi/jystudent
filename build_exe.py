@@ -13,6 +13,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+EXE_NAME = "SmartCampusPlatform_Fixed"
+
 def main():
     # 获取项目根目录
     project_root = Path(__file__).parent
@@ -39,9 +41,9 @@ def main():
     print("\n[2/4] 检查依赖...")
     try:
         import PyInstaller
-        print(f"  ✓ PyInstaller 已安装 (v{PyInstaller.__version__})")
+        print(f"  [OK] PyInstaller 已安装 (v{PyInstaller.__version__})")
     except ImportError:
-        print("  ✗ PyInstaller 未安装，正在安装...")
+        print("  [INFO] PyInstaller 未安装，正在安装...")
         subprocess.run([sys.executable, "-m", "pip", "install", "pyinstaller"], check=True)
 
     # 构建命令
@@ -59,7 +61,7 @@ def main():
         "--collect-submodules", "flask_sqlalchemy",
         "--hidden-import", "flask_sqlalchemy",
         "--hidden-import", "openpyxl",
-        "--name", "SmartCampusPlatform",
+        "--name", EXE_NAME,
         "--distpath", str(dist_dir),
         "--workpath", str(build_dir),
         "--specpath", str(project_root),
@@ -69,30 +71,30 @@ def main():
     try:
         result = subprocess.run(cmd, check=True, capture_output=False)
         if result.returncode == 0:
-            print("  ✓ 打包成功！")
+            print("  [OK] 打包成功！")
         else:
-            print("  ✗ 打包失败")
+            print("  [FAIL] 打包失败")
             return 1
     except subprocess.CalledProcessError as e:
-        print(f"  ✗ 打包过程出错: {e}")
+        print(f"  [FAIL] 打包过程出错: {e}")
         return 1
 
     # 显示结果
     print("\n[4/4] 打包完成！")
-    exe_file = dist_dir / "SmartCampusPlatform.exe"
+    exe_file = dist_dir / f"{EXE_NAME}.exe"
     
     if exe_file.exists():
         size_mb = exe_file.stat().st_size / (1024 * 1024)
-        print(f"\n✓ 可执行文件已生成:")
+        print(f"\n[OK] 可执行文件已生成:")
         print(f"  位置: {exe_file}")
         print(f"  大小: {size_mb:.2f} MB")
         print("\n使用方法:")
         print(f"  1. 双击运行: {exe_file.name}")
-        print(f"  2. 应用会自动打开浏览器访问 http://127.0.0.1:5001")
+        print(f"  2. 应用优先使用 http://127.0.0.1:5001（若占用会自动切换）")
         print(f"  3. 默认管理员账号: admin / weichuy1")
         return 0
     else:
-        print("\n✗ 打包失败，未生成 exe 文件")
+        print("\n[FAIL] 打包失败，未生成 exe 文件")
         return 1
 
 if __name__ == "__main__":

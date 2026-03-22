@@ -76,18 +76,18 @@ def register_cli_commands(app):
             admin.set_password("weichuy1")
             db.session.add(admin)
             db.session.commit()
-            click.echo("✓ 创建默认管理员: admin / weichuy1")
+            click.echo("[OK] 创建默认管理员: admin / weichuy1")
         else:
-            click.echo("✓ 管理员账户已存在")
+            click.echo("[OK] 管理员账户已存在")
     
     @app.cli.command()
     def backup():
         """创建数据库备份"""
         try:
             backup_path = BackupService.create_backup()
-            click.echo(f"✓ 备份成功: {backup_path}")
+            click.echo(f"[OK] 备份成功: {backup_path}")
         except Exception as e:
-            click.echo(f"✗ 备份失败: {str(e)}", err=True)
+            click.echo(f"[FAIL] 备份失败: {str(e)}", err=True)
     
     @app.cli.command()
     @click.argument('backup_file')
@@ -95,9 +95,9 @@ def register_cli_commands(app):
         """恢复数据库备份"""
         try:
             BackupService.restore_backup(backup_file)
-            click.echo(f"✓ 恢复成功: {backup_file}")
+            click.echo(f"[OK] 恢复成功: {backup_file}")
         except Exception as e:
-            click.echo(f"✗ 恢复失败: {str(e)}", err=True)
+            click.echo(f"[FAIL] 恢复失败: {str(e)}", err=True)
     
     @app.cli.command()
     def cleanup_logs():
@@ -105,6 +105,6 @@ def register_cli_commands(app):
         from app.utils import cleanup_old_logs
         try:
             cleanup_old_logs(days=30)
-            click.echo("✓ 日志清理完成")
+            click.echo("[OK] 日志清理完成")
         except Exception as e:
-            click.echo(f"✗ 清理失败: {str(e)}", err=True)
+            click.echo(f"[FAIL] 清理失败: {str(e)}", err=True)

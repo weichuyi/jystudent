@@ -36,9 +36,9 @@ def init_db():
             admin.set_password("weichuy1")
             db.session.add(admin)
             db.session.commit()
-            print("✓ 创建默认管理员: admin / weichuy1")
+            print("[OK] 创建默认管理员: admin / weichuy1")
         else:
-            print("✓ 管理员账户已存在")
+            print("[OK] 管理员账户已存在")
 
 
 def main():
