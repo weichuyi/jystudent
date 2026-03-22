@@ -53,6 +53,7 @@ class Class(db.Model):
     grade = db.Column(db.String(20))  # 年级
     total_students = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     students = db.relationship("Student", backref="class_obj", lazy=True)
     headteacher = db.relationship("User", backref="classes_managed")
@@ -96,6 +97,7 @@ class Teacher(db.Model):
     qualification = db.Column(db.String(100))  # 学位
     hire_date = db.Column(db.Date)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = db.relationship("User", backref="teacher_profile")
     courses = db.relationship("Course", backref="teacher", lazy=True)
@@ -308,6 +310,11 @@ def dashboard():
 
 # ======================== 学生管理路由 ========================
 
+def _teacher_managed_class_ids(user_id):
+    """返回教师（按用户ID）负责的班级ID列表。"""
+    rows = Class.query.filter_by(headteacher_id=user_id).with_entities(Class.id).all()
+    return [r[0] for r in rows]
+
 @app.route("/students")
 @login_required
 def list_students():
@@ -316,6 +323,16 @@ def list_students():
     status = request.args.get("status", "").strip()
 
     q = Student.query
+    classes_query = Class.query
+
+    if session.get("role") == "teacher":
+        managed_ids = _teacher_managed_class_ids(session["user_id"])
+        if managed_ids:
+            q = q.filter(Student.class_id.in_(managed_ids))
+            classes_query = classes_query.filter(Class.id.in_(managed_ids))
+        else:
+            q = q.filter(Student.id == -1)
+            classes_query = classes_query.filter(Class.id == -1)
 
     if query:
         like_query = f"%{query}%"
@@ -328,13 +345,18 @@ def list_students():
         )
 
     if class_id:
+        if session.get("role") == "teacher":
+            managed_ids = _teacher_managed_class_ids(session["user_id"])
+            if class_id not in managed_ids:
+                flash("你只能查看自己负责班级的学生", "error")
+                return redirect(url_for("list_students"))
         q = q.filter(Student.class_id == class_id)
 
     if status:
         q = q.filter(Student.status == status)
 
     students = q.order_by(Student.id.desc()).all()
-    classes = Class.query.all()
+    classes = classes_query.all()
 
     return render_template(
         "students/list.html",
@@ -350,6 +372,10 @@ def list_students():
 @role_required("admin", "teacher")
 def add_student():
     classes = Class.query.all()
+    managed_ids = []
+    if session.get("role") == "teacher":
+        managed_ids = _teacher_managed_class_ids(session["user_id"])
+        classes = Class.query.filter(Class.id.in_(managed_ids)).all() if managed_ids else []
 
     if request.method == "POST":
         student_no = request.form.get("student_no", "").strip()
@@ -374,6 +400,22 @@ def add_student():
             for error in errors:
                 flash(error, "danger")
             return render_template("students/form.html", student=Student(), classes=classes, action="add")
+
+        if session.get("role") == "teacher":
+            if not class_id or class_id not in managed_ids:
+                flash("教师只能将学生添加到自己负责的班级", "error")
+                student = Student(
+                    student_no=student_no,
+                    name=name,
+                    gender=gender,
+                    age=int(age_raw) if age_raw and age_raw.isdigit() else None,
+                    class_id=class_id,
+                    phone=phone,
+                    email=email,
+                    major=major,
+                    id_number=id_number,
+                )
+                return render_template("students/form.html", student=student, classes=classes, action="add")
 
         try:
             student = Student(
@@ -416,6 +458,14 @@ def add_student():
 def edit_student(student_id):
     student = Student.query.get_or_404(student_id)
     classes = Class.query.all()
+    managed_ids = []
+
+    if session.get("role") == "teacher":
+        managed_ids = _teacher_managed_class_ids(session["user_id"])
+        if student.class_id not in managed_ids:
+            flash("你只能编辑自己负责班级的学生", "error")
+            return redirect(url_for("list_students"))
+        classes = Class.query.filter(Class.id.in_(managed_ids)).all() if managed_ids else []
 
     if request.method == "POST":
         student.student_no = request.form.get("student_no", "").strip()
@@ -428,6 +478,10 @@ def edit_student(student_id):
         student.email = request.form.get("email", "").strip()
         student.major = request.form.get("major", "").strip()
         student.id_number = request.form.get("id_number", "").strip()
+
+        if session.get("role") == "teacher" and student.class_id not in managed_ids:
+            flash("教师不能把学生调整到非本人负责的班级", "error")
+            return render_template("students/form.html", student=student, classes=classes, action="edit")
 
         try:
             db.session.commit()
@@ -490,25 +544,82 @@ def list_classes():
 @app.route("/classes/add", methods=["GET", "POST"])
 @role_required("admin")
 def add_class():
-    teachers = Teacher.query.all()
+    teachers = (
+        Teacher.query
+        .join(User, Teacher.user_id == User.id)
+        .filter(User.role == "teacher")
+        .all()
+    )
+
+    def build_class_from_form():
+        return Class(
+            class_no=request.form.get("class_no", "").strip(),
+            class_name=request.form.get("class_name", "").strip(),
+            headteacher_id=request.form.get("headteacher_id", type=int),
+            grade=request.form.get("grade", "").strip(),
+        )
 
     if request.method == "POST":
-        class_no = request.form.get("class_no", "").strip()
-        class_name = request.form.get("class_name", "").strip()
-        headteacher_id = request.form.get("headteacher_id", type=int)
-        grade = request.form.get("grade", "").strip()
+        selected_teacher_id = request.form.get("headteacher_id", type=int)
+        cls = build_class_from_form()
 
-        if not class_no or not class_name:
-            flash("班级编号和班级名称不能为空", "danger")
-            return render_template("classes/form.html", teachers=teachers, action="add")
+        if not cls.class_no or not cls.class_name:
+            flash("班级编号和班级名称不能为空", "error")
+            return render_template("classes/form.html", teachers=teachers, cls=cls, action="add")
+
+        if len(cls.class_no) > 50:
+            flash("班级编号长度不能超过 50 个字符", "error")
+            return render_template("classes/form.html", teachers=teachers, cls=cls, action="add")
+
+        if len(cls.class_name) > 100:
+            flash("班级名称长度不能超过 100 个字符", "error")
+            return render_template("classes/form.html", teachers=teachers, cls=cls, action="add")
+
+        if Class.query.filter_by(class_no=cls.class_no).first():
+            flash("班级编号已存在，请使用其他编号", "error")
+            return render_template(
+                "classes/form.html",
+                teachers=teachers,
+                cls=cls,
+                selected_teacher_id=selected_teacher_id,
+                action="add",
+            )
+
+        # 表单提交的是 teachers.id；Class.headteacher_id 需要存 users.id。
+        if selected_teacher_id:
+            teacher_obj = Teacher.query.get(selected_teacher_id)
+            if not teacher_obj:
+                flash("所选班主任不存在，请重新选择", "error")
+                return render_template(
+                    "classes/form.html",
+                    teachers=teachers,
+                    cls=cls,
+                    selected_teacher_id=selected_teacher_id,
+                    action="add",
+                )
+            if not teacher_obj.user_id:
+                flash("所选教师未绑定系统账号，暂时不能设为班主任", "error")
+                return render_template(
+                    "classes/form.html",
+                    teachers=teachers,
+                    cls=cls,
+                    selected_teacher_id=selected_teacher_id,
+                    action="add",
+                )
+            if not teacher_obj.user or teacher_obj.user.role != "teacher":
+                flash("班主任必须是教师角色账号", "error")
+                return render_template(
+                    "classes/form.html",
+                    teachers=teachers,
+                    cls=cls,
+                    selected_teacher_id=selected_teacher_id,
+                    action="add",
+                )
+            cls.headteacher_id = teacher_obj.user_id
+        else:
+            cls.headteacher_id = None
 
         try:
-            cls = Class(
-                class_no=class_no,
-                class_name=class_name,
-                headteacher_id=headteacher_id,
-                grade=grade
-            )
             db.session.add(cls)
             db.session.commit()
 
@@ -517,18 +628,170 @@ def add_class():
                 action="create",
                 module="class",
                 record_id=cls.id,
-                details=f"新增班级 {class_name}"
+                details=f"新增班级 {cls.class_name}"
             )
             db.session.add(log)
             db.session.commit()
 
             flash("新增班级成功", "success")
             return redirect(url_for("list_classes"))
-        except Exception as e:
+        except Exception:
             db.session.rollback()
-            flash(f"添加失败：{str(e)}", "danger")
+            flash("新增班级失败，请检查输入内容后重试", "error")
+            return render_template(
+                "classes/form.html",
+                teachers=teachers,
+                cls=cls,
+                selected_teacher_id=selected_teacher_id,
+                action="add",
+            )
 
-    return render_template("classes/form.html", teachers=teachers, action="add")
+    return render_template(
+        "classes/form.html",
+        teachers=teachers,
+        cls=Class(),
+        selected_teacher_id=None,
+        action="add",
+    )
+
+
+@app.route("/classes/edit/<int:class_id>", methods=["GET", "POST"])
+@role_required("admin")
+def edit_class(class_id):
+    teachers = (
+        Teacher.query
+        .join(User, Teacher.user_id == User.id)
+        .filter(User.role == "teacher")
+        .all()
+    )
+    cls = Class.query.get_or_404(class_id)
+
+    selected_teacher_id = None
+    if cls.headteacher_id:
+        bound_teacher = Teacher.query.filter_by(user_id=cls.headteacher_id).first()
+        if bound_teacher:
+            selected_teacher_id = bound_teacher.id
+
+    if request.method == "POST":
+        selected_teacher_id = request.form.get("headteacher_id", type=int)
+        class_no = request.form.get("class_no", "").strip()
+        class_name = request.form.get("class_name", "").strip()
+        grade = request.form.get("grade", "").strip()
+        headteacher_id = None
+
+        if selected_teacher_id:
+            teacher_obj = Teacher.query.get(selected_teacher_id)
+            if not teacher_obj:
+                flash("所选班主任不存在，请重新选择", "error")
+                return render_template(
+                    "classes/form.html",
+                    teachers=teachers,
+                    cls=cls,
+                    selected_teacher_id=selected_teacher_id,
+                    action="edit",
+                )
+            if not teacher_obj.user_id:
+                flash("所选教师未绑定系统账号，暂时不能设为班主任", "error")
+                return render_template(
+                    "classes/form.html",
+                    teachers=teachers,
+                    cls=cls,
+                    selected_teacher_id=selected_teacher_id,
+                    action="edit",
+                )
+            if not teacher_obj.user or teacher_obj.user.role != "teacher":
+                flash("班主任必须是教师角色账号", "error")
+                return render_template(
+                    "classes/form.html",
+                    teachers=teachers,
+                    cls=cls,
+                    selected_teacher_id=selected_teacher_id,
+                    action="edit",
+                )
+            headteacher_id = teacher_obj.user_id
+
+        cls.class_no = class_no
+        cls.class_name = class_name
+        cls.grade = grade
+        cls.headteacher_id = headteacher_id
+
+        if not cls.class_no or not cls.class_name:
+            flash("班级编号和班级名称不能为空", "error")
+            return render_template(
+                "classes/form.html",
+                teachers=teachers,
+                cls=cls,
+                selected_teacher_id=selected_teacher_id,
+                action="edit",
+            )
+
+        if len(cls.class_no) > 50:
+            flash("班级编号长度不能超过 50 个字符", "error")
+            return render_template(
+                "classes/form.html",
+                teachers=teachers,
+                cls=cls,
+                selected_teacher_id=selected_teacher_id,
+                action="edit",
+            )
+
+        if len(cls.class_name) > 100:
+            flash("班级名称长度不能超过 100 个字符", "error")
+            return render_template(
+                "classes/form.html",
+                teachers=teachers,
+                cls=cls,
+                selected_teacher_id=selected_teacher_id,
+                action="edit",
+            )
+
+        exists = Class.query.filter(
+            Class.class_no == cls.class_no,
+            Class.id != cls.id,
+        ).first()
+        if exists:
+            flash("班级编号已存在，请使用其他编号", "error")
+            return render_template(
+                "classes/form.html",
+                teachers=teachers,
+                cls=cls,
+                selected_teacher_id=selected_teacher_id,
+                action="edit",
+            )
+
+        try:
+            db.session.commit()
+
+            log = OperationLog(
+                user_id=session["user_id"],
+                action="update",
+                module="class",
+                record_id=cls.id,
+                details=f"修改班级 {cls.class_name}({cls.class_no})",
+            )
+            db.session.add(log)
+            db.session.commit()
+
+            flash("班级修改成功", "success")
+            return redirect(url_for("list_classes"))
+        except Exception:
+            db.session.rollback()
+            flash("班级修改失败，请检查输入内容后重试", "error")
+            return render_template(
+                "classes/form.html",
+                teachers=teachers,
+                cls=cls,
+                selected_teacher_id=selected_teacher_id,
+                action="edit",
+            )
+
+    return render_template(
+        "classes/form.html",
+        teachers=teachers,
+        cls=cls,
+        selected_teacher_id=selected_teacher_id,
+        action="edit",
+    )
 
 
 # ======================== 教师管理路由 ========================
@@ -556,29 +819,45 @@ def list_teachers():
 @app.route("/teachers/add", methods=["GET", "POST"])
 @role_required("admin")
 def add_teacher():
-    if request.method == "POST":
-        teacher_no = request.form.get("teacher_no", "").strip()
-        name = request.form.get("name", "").strip()
-        gender = request.form.get("gender", "").strip()
-        department = request.form.get("department", "").strip()
-        phone = request.form.get("phone", "").strip()
-        email = request.form.get("email", "").strip()
-        qualification = request.form.get("qualification", "").strip()
+    def build_teacher_from_form():
+        return Teacher(
+            teacher_no=request.form.get("teacher_no", "").strip(),
+            name=request.form.get("name", "").strip(),
+            gender=request.form.get("gender", "").strip(),
+            department=request.form.get("department", "").strip(),
+            phone=request.form.get("phone", "").strip(),
+            email=request.form.get("email", "").strip(),
+            qualification=request.form.get("qualification", "").strip(),
+        )
 
-        if not teacher_no or not name:
-            flash("教工号和姓名不能为空", "danger")
-            return render_template("teachers/form.html", teacher=Teacher(), action="add")
+    if request.method == "POST":
+        teacher = build_teacher_from_form()
+
+        if not teacher.teacher_no or not teacher.name:
+            flash("教工号和姓名不能为空", "error")
+            return render_template("teachers/form.html", teacher=teacher, action="add")
+
+        if len(teacher.teacher_no) > 50:
+            flash("教工号长度不能超过 50 个字符", "error")
+            return render_template("teachers/form.html", teacher=teacher, action="add")
+
+        if len(teacher.name) > 100:
+            flash("姓名长度不能超过 100 个字符", "error")
+            return render_template("teachers/form.html", teacher=teacher, action="add")
+
+        if teacher.phone and len(teacher.phone) > 20:
+            flash("电话号码长度不能超过 20 位", "error")
+            return render_template("teachers/form.html", teacher=teacher, action="add")
+
+        if teacher.email and len(teacher.email) > 100:
+            flash("邮箱长度不能超过 100 个字符", "error")
+            return render_template("teachers/form.html", teacher=teacher, action="add")
+
+        if Teacher.query.filter_by(teacher_no=teacher.teacher_no).first():
+            flash("教工号已存在，请使用其他教工号", "error")
+            return render_template("teachers/form.html", teacher=teacher, action="add")
 
         try:
-            teacher = Teacher(
-                teacher_no=teacher_no,
-                name=name,
-                gender=gender,
-                department=department,
-                phone=phone,
-                email=email,
-                qualification=qualification
-            )
             db.session.add(teacher)
             db.session.commit()
 
@@ -587,16 +866,17 @@ def add_teacher():
                 action="create",
                 module="teacher",
                 record_id=teacher.id,
-                details=f"新增教师 {name}({teacher_no})"
+                details=f"新增教师 {teacher.name}({teacher.teacher_no})"
             )
             db.session.add(log)
             db.session.commit()
 
             flash("新增教师成功", "success")
             return redirect(url_for("list_teachers"))
-        except Exception as e:
+        except Exception:
             db.session.rollback()
-            flash(f"添加失败：{str(e)}", "danger")
+            flash("新增教师失败，请检查输入内容后重试", "error")
+            return render_template("teachers/form.html", teacher=teacher, action="add")
 
     return render_template("teachers/form.html", teacher=Teacher(), action="add")
 
@@ -1464,26 +1744,34 @@ def admin_export_courses():
 @login_required
 @role_required("admin")
 def admin_cleanup_logs():
-    """清理旧日志"""
-    from datetime import timedelta
+    """清空当前所有日志文件"""
     log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
-    cutoff = datetime.now() - timedelta(days=30)
-    deleted = 0
+    cleaned = 0
+    failed = 0
 
     if os.path.exists(log_dir):
         for f in os.listdir(log_dir):
-            if f.endswith(".log"):
+            if f.endswith(".log") or ".log." in f:
                 fpath = os.path.join(log_dir, f)
-                if datetime.fromtimestamp(os.path.getmtime(fpath)) < cutoff:
-                    os.remove(fpath)
-                    deleted += 1
+                if not os.path.isfile(fpath):
+                    continue
+                try:
+                    # 清空文件而非删除，避免运行中的日志句柄失效。
+                    with open(fpath, "w", encoding="utf-8"):
+                        pass
+                    cleaned += 1
+                except Exception:
+                    failed += 1
 
     db.session.add(OperationLog(
         user_id=session["user_id"], action="cleanup_logs", module="admin",
-        details=f"清理日志: 删除 {deleted} 个文件"
+        details=f"清理日志: 清空 {cleaned} 个文件, 失败 {failed} 个"
     ))
     db.session.commit()
-    flash(f"日志清理完成，删除了 {deleted} 个过期文件", "success")
+    if failed:
+        flash(f"日志清理完成：清空 {cleaned} 个文件，{failed} 个文件清理失败", "warning")
+    else:
+        flash(f"日志清理完成：已清空 {cleaned} 个日志文件", "success")
     return redirect(url_for("admin_index"))
 
 
