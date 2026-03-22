@@ -1,12 +1,12 @@
 ﻿{% extends "base.html" %}
-{% block title %}课程管理{% endblock %}
-{% block page_title %}课程管理{% endblock %}
+{% block title %}{% if session.role == 'student' %}课程选择{% else %}课程管理{% endif %}{% endblock %}
+{% block page_title %}{% if session.role == 'student' %}课程选择{% else %}课程管理{% endif %}{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div>
-    <h1 class="page-title">课程管理</h1>
-    <p class="page-subtitle">{% if session.role == 'student' %}点击"选课"按钮可以选择您感兴趣的课程{% else %}管理所有课程信息{% endif %}</p>
+    <h1 class="page-title">{% if session.role == 'student' %}课程选择{% else %}课程管理{% endif %}</h1>
+    <p class="page-subtitle">{% if session.role == 'student' %}在这里浏览开课信息并直接提交选课{% else %}管理所有课程信息{% endif %}</p>
   </div>
   {% if session.role == 'admin' %}
   <div class="d-flex gap-2">
@@ -75,9 +75,9 @@
             {% endif %}
           </td>
           <td>{{ course.semester or '' }}</td>
-          <td>{{ course.enrollments|length }}</td>
+          {% set enrolled = course.enrollments | selectattr('status', 'equalto', 'enrolled') | list | length %}
+          <td>{{ enrolled }}</td>
           <td>
-            {% set enrolled = course.enrollments|length %}
             {% set cap = course.max_capacity %}
             {% if enrolled >= cap %}
             <span class="badge badge-danger">{{ cap }} 已满</span>

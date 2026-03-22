@@ -37,18 +37,34 @@
       {% if session.role != 'teacher' or is_counselor %}
       <a class="sidebar-link {% if 'student' in (request.endpoint or '') and 'score' not in (request.endpoint or '') %}active{% endif %}"
          href="{{ url_for('list_students') }}">
-        <i class="bi bi-people-fill nav-icon"></i> 学生信息
+        <i class="bi bi-people-fill nav-icon"></i> {% if session.role == 'student' %}我的信息{% else %}学生信息{% endif %}
       </a>
+      {% if session.role != 'student' %}
       <a class="sidebar-link {% if 'enrollment' in (request.endpoint or '') %}active{% endif %}"
          href="{{ url_for('list_enrollments') }}">
         <i class="bi bi-journal-bookmark-fill nav-icon"></i> 选课记录
       </a>
+      {% endif %}
       {% endif %}
       <a class="sidebar-link {% if 'score' in (request.endpoint or '') %}active{% endif %}"
          href="{{ url_for('list_scores') }}">
         <i class="bi bi-bar-chart-fill nav-icon"></i> 成绩管理
       </a>
     </div>
+
+      {% if session.role == 'student' %}
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">选课服务</div>
+        <a class="sidebar-link {% if 'course' in (request.endpoint or '') %}active{% endif %}"
+           href="{{ url_for('list_courses') }}">
+          <i class="bi bi-book-fill nav-icon"></i> 课程选择
+        </a>
+        <a class="sidebar-link {% if 'enrollment' in (request.endpoint or '') %}active{% endif %}"
+           href="{{ url_for('list_enrollments') }}">
+          <i class="bi bi-journal-bookmark-fill nav-icon"></i> 我的选课
+        </a>
+      </div>
+      {% endif %}
 
     {% if session.role in ['admin', 'teacher'] %}
     <div class="sidebar-section">

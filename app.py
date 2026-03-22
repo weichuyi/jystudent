@@ -141,6 +141,8 @@ class Enrollment(db.Model):
     status = db.Column(db.String(20), default="enrolled")  # enrolled, withdrawn, completed
     enrollment_date = db.Column(db.DateTime, default=datetime.utcnow)
     completion_date = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (db.UniqueConstraint("student_id", "course_id", name="unique_student_course"),)
 
@@ -1572,9 +1574,60 @@ def list_enrollments():
     return render_template("enrollments/list.html", enrollments=enrollments, status=status)
 
 
+def _submit_enrollment(student, course, operator_user_id, actor_label):
+    existing = Enrollment.query.filter_by(student_id=student.id, course_id=course.id).first()
+
+    if existing and existing.status == "enrolled":
+        return False, "该学生已经选过这门课程", "warning"
+
+    current_count = db.session.query(Enrollment).filter_by(
+        course_id=course.id,
+        status="enrolled",
+    ).count()
+    if current_count >= course.max_capacity:
+        return False, "课程已满员", "danger"
+
+    try:
+        if existing and existing.status == "withdrawn":
+            enrollment = existing
+            enrollment.status = "enrolled"
+            enrollment.completion_date = None
+            enrollment.enrollment_date = datetime.utcnow()
+            log_action = "re_enroll"
+            log_details = f"{actor_label}：重新选课 {student.name}-{course.course_name}"
+        else:
+            enrollment = Enrollment(
+                student_id=student.id,
+                course_id=course.id,
+                status="enrolled"
+            )
+            db.session.add(enrollment)
+            log_action = "enroll"
+            log_details = f"{actor_label}：选课 {student.name}-{course.course_name}"
+
+        db.session.commit()
+
+        db.session.add(OperationLog(
+            user_id=operator_user_id,
+            action=log_action,
+            module="enrollment",
+            record_id=enrollment.id,
+            details=log_details,
+        ))
+        db.session.commit()
+        return True, "选课成功", "success"
+    except Exception as e:
+        db.session.rollback()
+        return False, f"选课失败：{str(e)}", "danger"
+
+
 @app.route("/enrollments/add/<int:course_id>", methods=["POST"])
 @login_required
 def add_enrollment(course_id):
+    if session.get("role") != "student":
+        flash("只有学生账号可以直接选课", "warning")
+        return redirect(url_for("list_courses"))
+
     course = Course.query.get_or_404(course_id)
     student = Student.query.filter_by(user_id=session["user_id"]).first()
 
@@ -1582,45 +1635,66 @@ def add_enrollment(course_id):
         flash("学生信息不存在", "danger")
         return redirect(url_for("list_courses"))
 
-    existing = Enrollment.query.filter_by(
-        student_id=student.id,
-        course_id=course_id
-    ).first()
-
-    if existing:
-        flash("已经选过该课程", "warning")
-        return redirect(url_for("list_courses"))
-
-    current_count = db.session.query(Enrollment).filter_by(course_id=course_id).count()
-    if current_count >= course.max_capacity:
-        flash("课程已满员", "danger")
-        return redirect(url_for("list_courses"))
-
-    try:
-        enrollment = Enrollment(
-            student_id=student.id,
-            course_id=course_id,
-            status="enrolled"
-        )
-        db.session.add(enrollment)
-        db.session.commit()
-
-        log = OperationLog(
-            user_id=session["user_id"],
-            action="enroll",
-            module="course",
-            record_id=enrollment.id,
-            details=f"选课 {course.course_name}"
-        )
-        db.session.add(log)
-        db.session.commit()
-
-        flash("选课成功", "success")
-    except Exception as e:
-        db.session.rollback()
-        flash(f"选课失败：{str(e)}", "danger")
+    success, message, category = _submit_enrollment(
+        student=student,
+        course=course,
+        operator_user_id=session["user_id"],
+        actor_label="学生自助选课",
+    )
+    flash(message, category)
 
     return redirect(url_for("list_courses"))
+
+
+@app.route("/enrollments/admin-add", methods=["GET", "POST"])
+@role_required("admin")
+def admin_add_enrollment():
+    students = Student.query.order_by(Student.student_no.asc()).all()
+    courses = Course.query.order_by(Course.id.desc()).all()
+
+    selected_student_id = request.form.get("student_id", type=int) if request.method == "POST" else None
+    selected_course_id = request.form.get("course_id", type=int) if request.method == "POST" else None
+
+    if request.method == "POST":
+        if not selected_student_id or not selected_course_id:
+            flash("请选择学生和课程", "danger")
+            return render_template(
+                "enrollments/admin_form.html",
+                students=students,
+                courses=courses,
+                selected_student_id=selected_student_id,
+                selected_course_id=selected_course_id,
+            )
+
+        student = Student.query.get(selected_student_id)
+        course = Course.query.get(selected_course_id)
+        if not student or not course:
+            flash("学生或课程不存在", "danger")
+            return render_template(
+                "enrollments/admin_form.html",
+                students=students,
+                courses=courses,
+                selected_student_id=selected_student_id,
+                selected_course_id=selected_course_id,
+            )
+
+        success, message, category = _submit_enrollment(
+            student=student,
+            course=course,
+            operator_user_id=session["user_id"],
+            actor_label="管理员代学生选课",
+        )
+        flash(message, category)
+        if success:
+            return redirect(url_for("list_enrollments"))
+
+    return render_template(
+        "enrollments/admin_form.html",
+        students=students,
+        courses=courses,
+        selected_student_id=selected_student_id,
+        selected_course_id=selected_course_id,
+    )
 
 
 @app.route("/enrollments/withdraw/<int:enrollment_id>", methods=["POST"])
