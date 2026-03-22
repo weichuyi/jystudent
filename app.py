@@ -18,6 +18,11 @@ app.config["SECRET_KEY"] = "student-system-secret-key-2026"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///students.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+DEFAULT_ADMIN_USERNAME = "admin"
+DEFAULT_ADMIN_FULL_NAME = "系统管理员"
+DEFAULT_ADMIN_PASSWORD = "weichuy1"
+DEFAULT_ADMIN_EMAIL = "admin@school.com"
+
 db = SQLAlchemy(app)
 
 course_teacher_links = db.Table(
@@ -232,18 +237,22 @@ def init_db():
     with app.app_context():
         db.create_all()
         # 创建或同步默认管理员账户密码
-        admin = User.query.filter_by(username="admin").first()
+        admin = User.query.filter_by(username=DEFAULT_ADMIN_USERNAME).first()
         if not admin:
             admin = User(
-                username="admin",
-                full_name="系统管理员",
+                username=DEFAULT_ADMIN_USERNAME,
+                full_name=DEFAULT_ADMIN_FULL_NAME,
                 role="admin",
-                email="admin@school.com"
+                email=DEFAULT_ADMIN_EMAIL
             )
             db.session.add(admin)
 
         # 按需求统一默认管理员密码
-        admin.set_password("weichuy1")
+        admin.role = "admin"
+        admin.is_active = True
+        admin.email = DEFAULT_ADMIN_EMAIL
+        admin.full_name = DEFAULT_ADMIN_FULL_NAME
+        admin.set_password(DEFAULT_ADMIN_PASSWORD)
         db.session.commit()
 
 
@@ -2783,6 +2792,72 @@ def admin_system_info():
         "log_dir_size": log_size,
     }
     return render_template("admin/system_info.html", info=info)
+
+
+@app.route("/admin/factory-reset", methods=["POST"])
+@login_required
+@role_required("admin")
+def admin_factory_reset():
+    """恢复出厂设置：清空业务数据，仅保留系统管理员账户。"""
+    admin_user = User.query.get_or_404(session["user_id"])
+
+    try:
+        Score.query.delete(synchronize_session=False)
+        StudentStatusChange.query.delete(synchronize_session=False)
+        PasswordResetKey.query.delete(synchronize_session=False)
+        OperationLog.query.delete(synchronize_session=False)
+        Enrollment.query.delete(synchronize_session=False)
+        db.session.execute(course_teacher_links.delete())
+        Course.query.delete(synchronize_session=False)
+        Student.query.delete(synchronize_session=False)
+        Teacher.query.delete(synchronize_session=False)
+        Class.query.delete(synchronize_session=False)
+        User.query.filter(User.id != admin_user.id).delete(synchronize_session=False)
+
+        admin_user.username = DEFAULT_ADMIN_USERNAME
+        admin_user.full_name = DEFAULT_ADMIN_FULL_NAME
+        admin_user.role = "admin"
+        admin_user.email = DEFAULT_ADMIN_EMAIL
+        admin_user.phone = None
+        admin_user.is_active = True
+        admin_user.set_password(DEFAULT_ADMIN_PASSWORD)
+
+        db.session.commit()
+
+        backup_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backups")
+        if os.path.exists(backup_dir):
+            for filename in os.listdir(backup_dir):
+                file_path = os.path.join(backup_dir, filename)
+                if os.path.isfile(file_path):
+                    try:
+                        os.remove(file_path)
+                    except OSError:
+                        pass
+
+        log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+        if os.path.exists(log_dir):
+            for filename in os.listdir(log_dir):
+                file_path = os.path.join(log_dir, filename)
+                if os.path.isfile(file_path):
+                    try:
+                        with open(file_path, "w", encoding="utf-8"):
+                            pass
+                    except OSError:
+                        pass
+
+        session["username"] = admin_user.username
+        session["role"] = admin_user.role
+        session["full_name"] = admin_user.full_name
+
+        flash(
+            f"系统已恢复出厂设置，仅保留管理员账户：{DEFAULT_ADMIN_USERNAME} / {DEFAULT_ADMIN_PASSWORD}",
+            "success",
+        )
+    except Exception as e:
+        db.session.rollback()
+        flash(f"恢复出厂设置失败：{str(e)}", "danger")
+
+    return redirect(url_for("admin_system_info"))
 
 
 if __name__ == "__main__":

@@ -12,6 +12,9 @@
         <i class="bi bi-chevron-right si-chevron"></i>系统信息
       </p>
     </div>
+    <button type="button" class="si-danger-btn" data-bs-toggle="modal" data-bs-target="#factoryResetModal">
+        <i class="bi bi-exclamation-octagon-fill"></i> 跑路
+    </button>
   </div>
 
   <!-- 顶部两列网格 -->
@@ -87,7 +90,89 @@
     </div>
   </div>
 
+  <div class="si-warning-card">
+    <div class="si-warning-head">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <span>危险操作</span>
+    </div>
+    <div class="si-warning-body">
+      点击“跑路”后，系统将删除所有业务数据、清空备份和日志，只保留默认系统管理员账户。
+    </div>
+  </div>
+
+  <div class="modal fade" id="factoryResetModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content si-modal-content">
+        <div class="modal-header si-modal-header">
+          <h5 class="modal-title"><i class="bi bi-exclamation-octagon-fill"></i> 确认跑路</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+        </div>
+        <div class="modal-body">
+          <p class="si-modal-text">执行后会删除所有已添加的数据、清空备份和日志，并仅保留系统管理员账户。</p>
+          <p class="si-modal-text si-modal-text-strong">该操作不可恢复，请确认你真的要继续。</p>
+          <div class="si-countdown-tip" id="factoryResetCountdownText">请等待 5 秒后才能确认</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+          <form method="post" action="{{ url_for('admin_factory_reset') }}">
+            <button type="submit" class="btn si-confirm-btn" id="factoryResetConfirmBtn" disabled>确定跑路（5）</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
+
+<script>
+(function () {
+  const modalEl = document.getElementById('factoryResetModal');
+  const confirmBtn = document.getElementById('factoryResetConfirmBtn');
+  const countdownText = document.getElementById('factoryResetCountdownText');
+  let timerId = null;
+
+  if (!modalEl || !confirmBtn || !countdownText) {
+    return;
+  }
+
+  function resetCountdown() {
+    let remaining = 5;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = '确定跑路（5）';
+    countdownText.textContent = '请等待 5 秒后才能确认';
+
+    if (timerId) {
+      window.clearInterval(timerId);
+    }
+
+    timerId = window.setInterval(function () {
+      remaining -= 1;
+      if (remaining <= 0) {
+        window.clearInterval(timerId);
+        timerId = null;
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = '确定跑路';
+        countdownText.textContent = '已可点击“确定跑路”';
+        return;
+      }
+
+      confirmBtn.textContent = '确定跑路（' + remaining + '）';
+      countdownText.textContent = '请等待 ' + remaining + ' 秒后才能确认';
+    }, 1000);
+  }
+
+  modalEl.addEventListener('show.bs.modal', resetCountdown);
+  modalEl.addEventListener('hidden.bs.modal', function () {
+    if (timerId) {
+      window.clearInterval(timerId);
+      timerId = null;
+    }
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = '确定跑路（5）';
+    countdownText.textContent = '请等待 5 秒后才能确认';
+  });
+})();
+</script>
 
 <style>
 .si-wrap { width: 100%; margin-top: -0.55rem; }
@@ -102,6 +187,21 @@
 .si-breadcrumb { color: var(--primary); text-decoration: none; }
 .si-breadcrumb:hover { text-decoration: underline; }
 .si-chevron { font-size: .7rem; color: var(--text-muted); margin: 0 .3rem; }
+.si-danger-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+  border: none; border-radius: .7rem; padding: .72rem 1.15rem;
+  background: linear-gradient(135deg, #dc2626, #991b1b); color: #fff;
+  font-size: .9rem; font-weight: 700; box-shadow: 0 10px 24px rgba(153, 27, 27, .22);
+}
+.si-danger-btn:hover { filter: brightness(.96); }
+.si-confirm-btn {
+  background: linear-gradient(135deg, #dc2626, #991b1b);
+  color: #fff; border: none;
+}
+.si-confirm-btn:hover { filter: brightness(.96); color: #fff; }
+.si-confirm-btn:disabled {
+  background: #fecaca; color: #7f1d1d; cursor: not-allowed; opacity: 1;
+}
 
 .si-top-grid {
   display: grid; grid-template-columns: 1fr 1fr;
@@ -165,6 +265,42 @@
   .si-app-grid .si-kv:nth-child(2n) { border-right: none; }
 }
 .si-app-grid .si-kv-label { width: auto; }
+
+.si-warning-card {
+  background: linear-gradient(135deg, #fff1f2, #ffe4e6);
+  border: 1px solid #fecdd3; border-radius: var(--radius);
+  padding: 1rem 1.1rem; box-shadow: var(--shadow-sm);
+}
+.si-warning-head {
+  display: flex; align-items: center; gap: .55rem;
+  font-size: .95rem; font-weight: 700; color: #9f1239; margin-bottom: .35rem;
+}
+.si-warning-body {
+  color: #881337; font-size: .85rem; line-height: 1.7;
+}
+.si-modal-content {
+  border: 1px solid #fecdd3;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+.si-modal-header {
+  background: linear-gradient(135deg, #fff1f2, #ffe4e6);
+}
+.si-modal-header .modal-title {
+  display: flex; align-items: center; gap: .5rem;
+  color: #9f1239; font-weight: 700;
+}
+.si-modal-text {
+  margin-bottom: .65rem; color: #334155; line-height: 1.7;
+}
+.si-modal-text-strong {
+  color: #9f1239; font-weight: 700;
+}
+.si-countdown-tip {
+  margin-top: .9rem; padding: .7rem .8rem;
+  border-radius: .7rem; background: #fff7ed; color: #9a3412;
+  font-size: .84rem; font-weight: 600;
+}
 
 </style>
 {% endblock %}
