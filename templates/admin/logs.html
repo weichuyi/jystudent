@@ -1,40 +1,62 @@
-{% extends "base.html" %}
-
+﻿{% extends "base.html" %}
 {% block title %}操作日志{% endblock %}
+{% block page_title %}操作日志{% endblock %}
 
 {% block content %}
-<div class="py-4">
-    <h1 class="h2 mb-4">操作日志</h1>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">操作日志</h1>
+    <p class="page-subtitle">记录所有用户的系统操作行为</p>
+  </div>
+</div>
 
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover align-middle bg-white">
-            <thead class="table-light">
-                <tr>
-                    <th>操作人</th>
-                    <th>操作</th>
-                    <th>模块</th>
-                    <th>详情</th>
-                    <th>时间</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if logs %}
-                {% for log in logs %}
-                <tr>
-                    <td>{{ log.user.full_name if log.user else '-' }}</td>
-                    <td>{{ log.action }}</td>
-                    <td>{{ log.module or '-' }}</td>
-                    <td>{{ log.details or '-' }}</td>
-                    <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else '-' }}</td>
-                </tr>
-                {% endfor %}
-                {% else %}
-                <tr>
-                    <td colspan="5" class="text-center py-4 text-muted">暂无日志数据</td>
-                </tr>
-                {% endif %}
-            </tbody>
-        </table>
-    </div>
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>操作人</th>
+          <th>操作</th>
+          <th>模块</th>
+          <th>详情</th>
+          <th>时间</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if logs %}
+        {% for log in logs %}
+        <tr>
+          <td style="color:#94a3b8;font-size:.78rem">{{ loop.index }}</td>
+          <td class="fw-semibold">{{ log.user.full_name if log.user else '' }}</td>
+          <td>
+            {% if log.action == 'create' %}
+            <span class="badge badge-success">新增</span>
+            {% elif log.action == 'update' %}
+            <span class="badge badge-info">修改</span>
+            {% elif log.action == 'delete' %}
+            <span class="badge badge-danger">删除</span>
+            {% else %}
+            <span class="badge badge-secondary">{{ log.action }}</span>
+            {% endif %}
+          </td>
+          <td>{{ log.module or '' }}</td>
+          <td style="color:#475569">{{ log.details or '' }}</td>
+          <td style="color:#94a3b8;font-size:.8rem">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else '' }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="6">
+            <div class="no-data">
+              <i class="bi bi-activity"></i>
+              <p>暂无日志数据</p>
+            </div>
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

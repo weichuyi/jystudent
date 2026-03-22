@@ -1,50 +1,72 @@
 {% extends "base.html" %}
 
-{% block title %}新增用户{% endblock %}
+{% block title %}{% if action == 'edit' %}编辑用户{% else %}新增用户{% endif %}{% endblock %}
+{% block page_title %}{% if action == 'edit' %}编辑用户{% else %}新增用户{% endif %}{% endblock %}
 
 {% block content %}
-<div class="py-4">
+<div class="page-header">
+  <div><h1 class="page-title">{% if action == 'edit' %}编辑用户{% else %}新增用户{% endif %}</h1></div>
+  <a href="{{ url_for('list_users') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> 返回列表</a>
+</div>
+<div>
     <div class="row justify-content-center">
         <div class="col-md-6">
-            <h1 class="h2 mb-4">新增用户</h1>
 
             <form method="post" class="card shadow-sm border-0">
                 <div class="card-body">
                     <div class="mb-3">
-                        <label class="form-label">用户名 *</label>
+                        <label class="form-label">用户名</label>
+                        {% if action == 'edit' %}
+                        <input class="form-control" type="text" value="{{ user.username }}" readonly style="background:#f8fafc;color:#64748b">
+                        {% else %}
                         <input class="form-control" type="text" name="username" required>
+                        {% endif %}
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">密码 *</label>
-                        <input class="form-control" type="password" name="password" required>
+                        <label class="form-label">密码{% if action == 'edit' %} <small class="text-muted fw-normal">（留空则不修改）</small>{% else %} *{% endif %}</label>
+                        <input class="form-control" type="password" name="password" {% if action != 'edit' %}required{% endif %}>
                         <small class="text-muted">至少 6 个字符</small>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">姓名 *</label>
-                        <input class="form-control" type="text" name="full_name" required>
+                        <input class="form-control" type="text" name="full_name" value="{{ user.full_name if user else '' }}" required>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">角色 *</label>
                         <select class="form-select" name="role" required>
                             <option value="">请选择</option>
-                            <option value="admin">管理员</option>
-                            <option value="teacher">教师</option>
-                            <option value="student">学生</option>
+                            <option value="admin"   {% if user and user.role == 'admin'   %}selected{% endif %}>管理员</option>
+                            <option value="teacher" {% if user and user.role == 'teacher' %}selected{% endif %}>教师</option>
+                            <option value="student" {% if user and user.role == 'student' %}selected{% endif %}>学生</option>
                         </select>
                     </div>
 
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <label class="form-label">邮箱</label>
-                        <input class="form-control" type="email" name="email">
+                        <input class="form-control" type="email" name="email" value="{{ user.email if user else '' }}">
                     </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">电话</label>
+                        <input class="form-control" type="text" name="phone" value="{{ user.phone if user else '' }}">
+                    </div>
+
+                    {% if action == 'edit' %}
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="isActive" name="is_active" {% if user.is_active %}checked{% endif %}>
+                            <label class="form-check-label" for="isActive">账号启用</label>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
 
                 <div class="card-footer d-flex justify-content-end gap-2">
                     <a class="btn btn-outline-secondary" href="{{ url_for('list_users') }}">取消</a>
-                    <button class="btn btn-primary" type="submit">新增</button>
+                    <button class="btn btn-primary" type="submit">{% if action == 'edit' %}保存修改{% else %}新增{% endif %}</button>
                 </div>
             </form>
         </div>
