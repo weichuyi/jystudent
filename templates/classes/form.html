@@ -36,9 +36,9 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label">班主任</label>
+                        <label class="form-label">辅导员</label>
                         <select class="form-select" name="headteacher_id">
-                            <option value="">请选择班主任</option>
+                            <option value="">请选择辅导员</option>
                             {% for t in teachers %}
                             <option value="{{ t.id }}" {% if selected_teacher_id == t.id %}selected{% endif %}>{{ t.name }}</option>
                             {% endfor %}
