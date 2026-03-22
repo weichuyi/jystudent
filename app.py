@@ -501,6 +501,10 @@ def inject_role_flags():
 @app.route("/students")
 @login_required
 def list_students():
+    if session.get("role") == "teacher" and not _is_counselor(session.get("user_id")):
+        flash("任课老师只能管理成绩，不能进行班级管理", "warning")
+        return redirect(url_for("list_scores"))
+
     query = request.args.get("q", "").strip()
     class_id = request.args.get("class_id", type=int)
     status = request.args.get("status", "").strip()
@@ -1530,6 +1534,10 @@ def add_course():
 @app.route("/enrollments")
 @login_required
 def list_enrollments():
+    if session.get("role") == "teacher" and not _is_counselor(session.get("user_id")):
+        flash("任课老师只能管理成绩，不能进行班级管理", "warning")
+        return redirect(url_for("list_scores"))
+
     status = request.args.get("status", "").strip()
     q = Enrollment.query.join(Course, Enrollment.course_id == Course.id).join(Student, Enrollment.student_id == Student.id)
 
