@@ -1,52 +1,79 @@
-{% extends "base.html" %}
-
+﻿{% extends "base.html" %}
 {% block title %}成绩管理{% endblock %}
+{% block page_title %}成绩管理{% endblock %}
 
 {% block content %}
-<div class="py-4">
-    <h1 class="h2 mb-4">成绩管理</h1>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">成绩管理</h1>
+    <p class="page-subtitle">{% if session.role == 'student' %}查看您的课程成绩{% else %}录入和管理学生成绩{% endif %}</p>
+  </div>
+</div>
 
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover align-middle bg-white">
-            <thead class="table-light">
-                <tr>
-                    <th>学号</th>
-                    <th>学生名称</th>
-                    <th>课程</th>
-                    <th>学分</th>
-                    <th>成绩</th>
-                    <th>等级</th>
-                    <th width="120">操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if enrollments %}
-                {% for e in enrollments %}
-                <tr>
-                    <td><strong>{{ e.student.student_no }}</strong></td>
-                    <td>{{ e.student.name }}</td>
-                    <td>{{ e.course.course_name }}</td>
-                    <td>{{ e.course.credits or '-' }}</td>
-                    <td>{{ e.score or '-' }}</td>
-                    <td>{{ e.grade or '-' }}</td>
-                    <td>
-                        {% if session.role in ['admin', 'teacher'] %}
-                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('record_score', enrollment_id=e.id) }}">
-                            {% if e.score %}修改{% else %}录入{% endif %}
-                        </a>
-                        {% else %}
-                        <span class="text-muted">{{ e.score if e.score else '未评分' }}</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-                {% else %}
-                <tr>
-                    <td colspan="7" class="text-center py-4 text-muted">暂无成绩数据</td>
-                </tr>
-                {% endif %}
-            </tbody>
-        </table>
-    </div>
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>学号</th>
+          <th>学生姓名</th>
+          <th>课程名称</th>
+          <th>学分</th>
+          <th>成绩</th>
+          <th>等级</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if enrollments %}
+        {% for e in enrollments %}
+        <tr>
+          <td style="color:#94a3b8;font-size:.78rem">{{ loop.index }}</td>
+          <td><code style="background:#f1f5f9;padding:.15em .45em;border-radius:.3rem;font-size:.8rem">{{ e.student.student_no }}</code></td>
+          <td class="fw-semibold">{{ e.student.name }}</td>
+          <td>{{ e.course.course_name }}</td>
+          <td>{{ e.course.credits or '' }}</td>
+          <td>
+            {% if e.score is not none and e.score != '' %}
+            <span class="fw-semibold" style="{% if e.score >= 90 %}color:#10b981{% elif e.score >= 60 %}color:#1e293b{% else %}color:#ef4444{% endif %}">
+              {{ e.score }}
+            </span>
+            {% else %}
+            <span style="color:#94a3b8">未录入</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if e.grade %}
+            <span class="badge {% if e.grade == 'A' %}badge-success{% elif e.grade == 'B' %}badge-info{% elif e.grade in ['C','D'] %}badge-warning{% else %}badge-danger{% endif %}">
+              {{ e.grade }}
+            </span>
+            {% else %}{% endif %}
+          </td>
+          <td>
+            {% if session.role in ['admin', 'teacher'] %}
+            <a class="btn btn-sm {% if e.score %}btn-outline-primary{% else %}btn-outline-success{% endif %}"
+               href="{{ url_for('record_score', enrollment_id=e.id) }}">
+              {% if e.score %}<i class="bi bi-pencil"></i> 修改{% else %}<i class="bi bi-plus"></i> 录入{% endif %}
+            </a>
+            {% else %}
+            <span style="color:#94a3b8;font-size:.8rem">{{ e.score if e.score else '未评分' }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="8">
+            <div class="no-data">
+              <i class="bi bi-bar-chart"></i>
+              <p>暂无成绩数据</p>
+            </div>
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}
