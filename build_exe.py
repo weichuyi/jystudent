@@ -58,7 +58,7 @@ def main():
         "--hidden-import", "flask_sqlalchemy",
         "--name", "SmartCampusPlatform",
         "--distpath", str(dist_dir),
-        "--buildpath", str(build_dir),
+        "--workpath", str(build_dir),
         "--specpath", str(project_root),
         str(project_root / "run.py")
     ]
