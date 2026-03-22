@@ -85,7 +85,7 @@
                   <form
                     method="post"
                     action="{{ url_for('delete_student', student_id=s.id) }}"
-                    onsubmit="return confirm('确认删除该学生吗？');"
+                    onsubmit="return confirm('确认删除学生【{{ s.name }}】（学号：{{ s.student_no }}）吗？');"
                   >
                     <button class="btn btn-sm btn-outline-danger" type="submit">删除</button>
                   </form>

@@ -59,13 +59,13 @@
           <td>{{ teacher.phone or '' }}</td>
           <td>{{ teacher.email or '' }}</td>
           <td>
-            <div class="d-flex gap-1">
+            <div class="table-actions">
               {% if session.role == 'admin' %}
-              <a href="{{ url_for('edit_teacher', teacher_id=teacher.id) }}" class="btn btn-sm btn-outline-primary" title="编辑">
+              <a href="{{ url_for('edit_teacher', teacher_id=teacher.id) }}" class="btn btn-sm btn-outline-primary btn-icon" title="编辑">
                 <i class="bi bi-pencil"></i>
               </a>
-              <form method="post" action="{{ url_for('delete_teacher', teacher_id=teacher.id) }}" style="display:inline" onsubmit="return confirm('确认删除该教师？')">
-                <button class="btn btn-sm btn-outline-danger" type="submit" title="删除">
+              <form method="post" action="{{ url_for('delete_teacher', teacher_id=teacher.id) }}" style="display:inline" onsubmit="return confirm('确认删除教师【{{ teacher.name }}】（教工号：{{ teacher.teacher_no }}）吗？')">
+                <button class="btn btn-sm btn-outline-danger btn-icon" type="submit" title="删除">
                   <i class="bi bi-trash"></i>
                 </button>
               </form>
