@@ -8,7 +8,7 @@
     <h1 class="page-title">班级管理</h1>
     <p class="page-subtitle">管理所有班级信息</p>
   </div>
-  {% if session.role in ['admin', 'teacher'] %}
+  {% if session.role == 'admin' %}
   <a href="{{ url_for('add_class') }}" class="btn btn-primary">
     <i class="bi bi-plus-circle"></i> 新增班级
   </a>
@@ -42,11 +42,16 @@
             <span class="badge badge-info">{{ cls.students|length }} 人</span>
           </td>
           <td>
-            <div class="d-flex gap-1">
-              {% if session.role in ['admin', 'teacher'] %}
-              <button class="btn btn-sm btn-outline-secondary" disabled title="编辑">
+            <div class="table-actions">
+              {% if session.role == 'admin' %}
+              <a class="btn btn-sm btn-outline-secondary btn-icon" href="{{ url_for('edit_class', class_id=cls.id) }}" title="编辑">
                 <i class="bi bi-pencil"></i>
-              </button>
+              </a>
+              <form method="post" action="{{ url_for('delete_class', class_id=cls.id) }}" style="display:inline" onsubmit="return confirm('确认删除班级【{{ cls.class_name }}】（编号：{{ cls.class_no }}）吗？')">
+                <button class="btn btn-sm btn-outline-danger btn-icon" type="submit" title="删除">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
               {% endif %}
             </div>
           </td>
