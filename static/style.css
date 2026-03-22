@@ -566,6 +566,10 @@ body {
 .badge-secondary { background: #f1f5f9; color: #475569; }
 .badge-primary { background: var(--primary-light); color: var(--primary); }
 
+.score-high { color: #10b981; }
+.score-mid { color: #1e293b; }
+.score-low { color: #ef4444; }
+
 /* ================================================
    BUTTONS
    ================================================ */
