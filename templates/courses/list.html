@@ -1,89 +1,98 @@
-{% extends "base.html" %}
-
+﻿{% extends "base.html" %}
 {% block title %}课程管理{% endblock %}
+{% block page_title %}课程管理{% endblock %}
 
 {% block content %}
-<div class="py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h2 m-0">课程管理</h1>
-        {% if session.role in ['admin', 'teacher'] %}
-        <a class="btn btn-primary" href="{{ url_for('add_course') }}">
-            <i class="bi bi-plus-circle"></i> 新增课程
-        </a>
-        {% endif %}
-    </div>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">课程管理</h1>
+    <p class="page-subtitle">{% if session.role == 'student' %}点击"选课"按钮可以选择您感兴趣的课程{% else %}管理所有课程信息{% endif %}</p>
+  </div>
+  {% if session.role in ['admin', 'teacher'] %}
+  <a href="{{ url_for('add_course') }}" class="btn btn-primary">
+    <i class="bi bi-plus-circle"></i> 新增课程
+  </a>
+  {% endif %}
+</div>
 
-    {% if session.role == 'student' %}
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body">
-            <p class="mb-0"><i class="bi bi-info-circle"></i> 点击"选课"按钮可以选择课程</p>
-        </div>
-    </div>
-    {% endif %}
+<div class="card mb-3">
+  <div class="card-body" style="padding:.85rem 1.25rem">
+    <form method="get" class="search-bar">
+      <select class="form-select" name="semester" style="width:160px;flex-shrink:0">
+        <option value="">所有学期</option>
+        {% for s in semesters %}
+        <option value="{{ s }}" {% if s == semester %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> 筛选</button>
+      <a href="{{ url_for('list_courses') }}" class="btn btn-outline-secondary">重置</a>
+    </form>
+  </div>
+</div>
 
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-6">
-                    <select class="form-select" name="semester">
-                        <option value="">所有学期</option>
-                        {% for s in semesters %}
-                        <option value="{{ s }}" {% if s == semester %}selected{% endif %}>{{ s }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-6 d-grid gap-2">
-                    <button class="btn btn-outline-secondary" type="submit">筛选</button>
-                </div>
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>课程号</th>
+          <th>课程名称</th>
+          <th>学分</th>
+          <th>学时</th>
+          <th>任课教师</th>
+          <th>学期</th>
+          <th>选课人数</th>
+          <th>容量</th>
+          {% if session.role == 'student' %}
+          <th>操作</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% if courses %}
+        {% for course in courses %}
+        <tr>
+          <td style="color:#94a3b8;font-size:.78rem">{{ loop.index }}</td>
+          <td><code style="background:#f1f5f9;padding:.15em .45em;border-radius:.3rem;font-size:.8rem">{{ course.course_no }}</code></td>
+          <td class="fw-semibold">{{ course.course_name }}</td>
+          <td>{{ course.credits or '' }}</td>
+          <td>{{ course.hours or '' }}</td>
+          <td>{{ course.teacher.name if course.teacher else '' }}</td>
+          <td>{{ course.semester or '' }}</td>
+          <td>{{ course.enrollments|length }}</td>
+          <td>
+            {% set enrolled = course.enrollments|length %}
+            {% set cap = course.max_capacity %}
+            {% if enrolled >= cap %}
+            <span class="badge badge-danger">{{ cap }} 已满</span>
+            {% else %}
+            <span class="badge badge-success">{{ cap }}</span>
+            {% endif %}
+          </td>
+          {% if session.role == 'student' %}
+          <td>
+            <form method="post" action="{{ url_for('add_enrollment', course_id=course.id) }}" style="display:inline">
+              <button class="btn btn-sm btn-outline-success" type="submit">
+                <i class="bi bi-plus"></i> 选课
+              </button>
             </form>
-        </div>
-    </div>
-
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover align-middle bg-white">
-            <thead class="table-light">
-                <tr>
-                    <th>课程号</th>
-                    <th>课程名</th>
-                    <th>学分</th>
-                    <th>学时</th>
-                    <th>教师</th>
-                    <th>学期</th>
-                    <th>选课人数</th>
-                    <th>容量</th>
-                    {% if session.role == 'student' %}
-                    <th width="100">操作</th>
-                    {% endif %}
-                </tr>
-            </thead>
-            <tbody>
-                {% if courses %}
-                {% for course in courses %}
-                <tr>
-                    <td><strong>{{ course.course_no }}</strong></td>
-                    <td>{{ course.course_name }}</td>
-                    <td>{{ course.credits or '-' }}</td>
-                    <td>{{ course.hours or '-' }}</td>
-                    <td>{{ course.teacher.name if course.teacher else '-' }}</td>
-                    <td>{{ course.semester or '-' }}</td>
-                    <td>{{ course.enrollments|length }}</td>
-                    <td>{{ course.max_capacity }}</td>
-                    {% if session.role == 'student' %}
-                    <td>
-                        <form method="post" action="{{ url_for('add_enrollment', course_id=course.id) }}" style="display:inline;">
-                            <button class="btn btn-sm btn-outline-success" type="submit">选课</button>
-                        </form>
-                    </td>
-                    {% endif %}
-                </tr>
-                {% endfor %}
-                {% else %}
-                <tr>
-                    <td colspan="{% if session.role == 'student' %}9{% else %}8{% endif %}" class="text-center py-4 text-muted">暂无课程数据</td>
-                </tr>
-                {% endif %}
-            </tbody>
-        </table>
-    </div>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="10">
+            <div class="no-data">
+              <i class="bi bi-book"></i>
+              <p>暂无课程数据</p>
+            </div>
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

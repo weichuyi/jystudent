@@ -1,12 +1,16 @@
 {% extends "base.html" %}
 
 {% block title %}{% if action == 'add' %}新增课程{% else %}编辑课程{% endif %}{% endblock %}
+{% block page_title %}{% if action == 'add' %}新增课程{% else %}编辑课程{% endif %}{% endblock %}
 
 {% block content %}
-<div class="py-4">
+<div class="page-header">
+  <div><h1 class="page-title">{% if action == 'add' %}新增课程{% else %}编辑课程{% endif %}</h1></div>
+  <a href="{{ url_for('list_courses') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> 返回列表</a>
+</div>
+<div>
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <h1 class="h2 mb-4">{% if action == 'add' %}新增课程{% else %}编辑课程{% endif %}</h1>
 
             <form method="post" class="card shadow-sm border-0">
                 <div class="card-body">
