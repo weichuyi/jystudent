@@ -57,7 +57,7 @@ body {
   z-index: 1040;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow-y: hidden;
   overflow-x: hidden;
   transition: transform .3s cubic-bezier(.4,0,.2,1);
   box-shadow: 4px 0 24px rgba(0,0,0,.18);
@@ -96,6 +96,8 @@ body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .sidebar-section {
@@ -269,6 +271,12 @@ body {
   padding: clamp(1rem, 1.4vw, 1.35rem);
   height: calc(100dvh - var(--topbar-height));
   overflow-y: auto;
+}
+
+/* Admin sub-page shared content wrapper */
+.admin-page-wrap {
+  padding: 1.5rem 1.75rem 2rem;
+  width: 100%;
 }
 
 /* Page Header */

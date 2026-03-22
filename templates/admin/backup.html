@@ -1,146 +1,199 @@
 {% extends "base.html" %}
-
 {% block title %}备份管理{% endblock %}
-
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <h1 class="mb-3">
-                <i class="bi bi-cloud-check"></i> 数据库备份管理
-            </h1>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('admin_index') }}">管理中心</a></li>
-                    <li class="breadcrumb-item active">备份管理</li>
-                </ol>
-            </nav>
-        </div>
+<div class="bk-wrap admin-page-wrap">
+
+  <!-- 页头 -->
+  <div class="bk-header">
+    <div>
+      <h2 class="bk-title"><i class="bi bi-database-fill-gear"></i> 备份管理</h2>
+      <p class="bk-sub">
+        <a href="{{ url_for('admin_index') }}" class="bk-breadcrumb">管理中心</a>
+        <i class="bi bi-chevron-right bk-chevron"></i>备份管理
+      </p>
+    </div>
+    <form method="POST" action="{{ url_for('admin_create_backup') }}">
+      <button type="submit" class="bk-btn-primary">
+        <i class="bi bi-plus-circle-fill"></i> 创建新备份
+      </button>
+    </form>
+  </div>
+
+  <!-- 备份列表卡片 -->
+  <div class="bk-card">
+    <div class="bk-card-head">
+      <span class="bk-head-icon"><i class="bi bi-database-fill"></i></span>
+      <span class="bk-card-title">备份列表</span>
+      <span class="bk-count-badge">共 {{ backups|length }} 个</span>
     </div>
 
-    <!-- 按钮栏 -->
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <form method="POST" action="{{ url_for('admin_create_backup') }}" class="d-inline-block">
-                <button type="submit" class="btn btn-success btn-lg">
-                    <i class="bi bi-plus-circle"></i> 创建新备份
-                </button>
-            </form>
-            <a href="{{ url_for('admin_index') }}" class="btn btn-secondary btn-lg ms-2">
-                <i class="bi bi-arrow-left"></i> 返回
-            </a>
-        </div>
+    {% if backups %}
+    <div class="bk-table-wrap">
+      <table class="bk-table">
+        <thead>
+          <tr>
+            <th style="width:3rem">#</th>
+            <th>备份文件</th>
+            <th>创建时间</th>
+            <th>大小</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for backup in backups %}
+          <tr>
+            <td class="bk-idx">{{ loop.index }}</td>
+            <td>
+              <i class="bi bi-file-earmark-zip" style="color:var(--primary);margin-right:.4rem;"></i>
+              <code class="bk-code">{{ backup.filename }}</code>
+            </td>
+            <td class="bk-date">{{ backup.date }}</td>
+            <td><span class="bk-size-badge">{{ backup.size_mb }} MB</span></td>
+            <td>
+              <div class="bk-actions">
+                <form method="POST" action="{{ url_for('admin_restore_backup', backup_file=backup.filename) }}">
+                  <button type="submit" class="bk-action-btn bk-btn-green"
+                          onclick="return confirm('确认恢复此备份？当前数据将被完全覆盖，操作不可撤销！');">
+                    <i class="bi bi-arrow-counterclockwise"></i> 恢复
+                  </button>
+                </form>
+                <a href="{{ url_for('admin_download_backup', backup_file=backup.filename) }}" class="bk-action-btn bk-btn-blue">
+                  <i class="bi bi-download"></i> 下载
+                </a>
+                <form method="POST" action="{{ url_for('admin_delete_backup', backup_file=backup.filename) }}">
+                  <button type="submit" class="bk-action-btn bk-btn-red"
+                          onclick="return confirm('确认删除此备份？');">
+                    <i class="bi bi-trash3"></i> 删除
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+    {% else %}
+    <div class="bk-empty">
+      <i class="bi bi-cloud-slash"></i>
+      <p>暂无备份，点击右上角"创建新备份"开始</p>
+    </div>
+    {% endif %}
+  </div>
 
-    <!-- 备份列表 -->
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">备份列表 (共 {{ backups|length }} 个)</h5>
-                </div>
-                <div class="card-body">
-                    {% if backups %}
-                    <div class="table-responsive">
-                        <table class="table table-hover table-striped">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>#</th>
-                                    <th>备份文件名</th>
-                                    <th>创建时间</th>
-                                    <th>文件大小</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for backup in backups %}
-                                <tr>
-                                    <td>{{ loop.index }}</td>
-                                    <td>
-                                        <i class="bi bi-file-earmark-database"></i>
-                                        <code>{{ backup.filename }}</code>
-                                    </td>
-                                    <td>{{ backup.date }}</td>
-                                    <td>
-                                        <span class="badge bg-info">{{ backup.size_mb }} MB</span>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group" role="group">
-                                            <!-- 恢复按钮 -->
-                                            <form method="POST" action="{{ url_for('admin_restore_backup', backup_file=backup.filename) }}" class="d-inline">
-                                                <button type="submit" class="btn btn-sm btn-success" 
-                                                        onclick="return confirm('确实要恢复此备份吗？当前数据将被覆盖！');" 
-                                                        title="恢复此备份">
-                                                    <i class="bi bi-arrow-counterclockwise"></i> 恢复
-                                                </button>
-                                            </form>
-                                            
-                                            <!-- 下载按钮 -->
-                                            <a href="{{ url_for('admin_download_backup', backup_file=backup.filename) }}" 
-                                               class="btn btn-sm btn-info" 
-                                               title="下载备份文件">
-                                                <i class="bi bi-download"></i> 下载
-                                            </a>
-                                            
-                                            <!-- 删除按钮 -->
-                                            <form method="POST" action="{{ url_for('admin_delete_backup', backup_file=backup.filename) }}" class="d-inline">
-                                                <button type="submit" class="btn btn-sm btn-danger" 
-                                                        onclick="return confirm('确实要删除此备份吗？');" 
-                                                        title="删除备份">
-                                                    <i class="bi bi-trash"></i> 删除
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="alert alert-info" role="alert">
-                        <i class="bi bi-info-circle"></i> 暂无备份，请创建新备份
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
+  <!-- 注意事项 -->
+  <div class="bk-notice">
+    <div class="bk-notice-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+    <div class="bk-notice-body">
+      <div class="bk-notice-title">注意事项</div>
+      <ul class="bk-notice-list">
+        <li>备份文件保存在 <code class="bk-code">backups/</code> 目录中</li>
+        <li><strong>恢复备份</strong>：将用备份数据完全覆盖当前数据库，操作不可撤销，请谨慎</li>
+        <li><strong>定期备份</strong>：建议至少每周创建一次备份，防止数据丢失</li>
+        <li>可将备份文件下载到本机进行额外存储</li>
+      </ul>
     </div>
+  </div>
 
-    <!-- 信息提示 -->
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <div class="alert alert-warning" role="alert">
-                <h5><i class="bi bi-exclamation-triangle"></i> 注意事项</h5>
-                <ul class="mb-0">
-                    <li>备份文件保存在 <code>backups/</code> 目录中</li>
-                    <li><strong>恢复备份</strong>：将用备份的数据覆盖当前数据库，操作谨慎！</li>
-                    <li><strong>定期备份</strong>：建议定期创建备份以防数据丢失</li>
-                    <li>可以下载备份文件到本地存储</li>
-                </ul>
-            </div>
-        </div>
-    </div>
 </div>
 
 <style>
-    .card {
-        border: none;
-        border-radius: 0.5rem;
-    }
-    
-    .card-header {
-        border-radius: 0.5rem 0.5rem 0 0;
-    }
-    
-    .btn-group {
-        gap: 2px;
-    }
-    
-    code {
-        background-color: #f5f5f5;
-        padding: 2px 6px;
-        border-radius: 3px;
-    }
+.bk-wrap { width: 100%; }
+
+.bk-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.75rem; flex-wrap: wrap; gap: .75rem;
+}
+.bk-title { font-size: 1.35rem; font-weight: 700; color: var(--text); margin: 0 0 .2rem; }
+.bk-title i { color: var(--primary); margin-right: .4rem; }
+.bk-sub { color: var(--text-muted); margin: 0; font-size: .85rem; }
+.bk-breadcrumb { color: var(--primary); text-decoration: none; }
+.bk-breadcrumb:hover { text-decoration: underline; }
+.bk-chevron { font-size: .7rem; color: var(--text-muted); margin: 0 .3rem; }
+
+.bk-btn-primary {
+  display: inline-flex; align-items: center; gap: .4rem;
+  background: var(--primary); color: #fff; border: none;
+  border-radius: var(--radius-sm); padding: .5rem 1.1rem;
+  font-size: .85rem; font-weight: 600; cursor: pointer;
+  transition: var(--transition);
+}
+.bk-btn-primary:hover { background: var(--primary-hover); }
+
+.bk-card {
+  background: var(--card-bg); border: 1.5px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  margin-bottom: 1.25rem; box-shadow: var(--shadow-sm);
+}
+.bk-card-head {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .9rem 1.25rem; border-bottom: 1px solid var(--border);
+}
+.bk-head-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2rem; height: 2rem; border-radius: .4rem;
+  background: #ede9fe; color: #4f46e5; font-size: 1rem; flex-shrink: 0;
+}
+.bk-card-title { font-weight: 600; font-size: .95rem; color: var(--text); flex: 1; }
+.bk-count-badge {
+  background: #f1f5f9; color: var(--text-muted);
+  font-size: .75rem; font-weight: 600; padding: .2rem .6rem; border-radius: 99px;
+}
+
+.bk-table-wrap { overflow-x: auto; }
+.bk-table { width: 100%; border-collapse: collapse; }
+.bk-table thead th {
+  padding: .7rem 1.25rem; font-size: .78rem; font-weight: 600;
+  text-transform: uppercase; color: var(--text-muted);
+  background: #f8fafc; border-bottom: 1.5px solid var(--border);
+  letter-spacing: .03em; white-space: nowrap;
+}
+.bk-table tbody tr { transition: background .15s; }
+.bk-table tbody tr:hover { background: #f8fafc; }
+.bk-table tbody td {
+  padding: .85rem 1.25rem; font-size: .875rem; color: var(--text);
+  border-bottom: 1px solid var(--border); vertical-align: middle;
+}
+.bk-table tbody tr:last-child td { border-bottom: none; }
+.bk-idx  { color: var(--text-muted); font-size: .8rem; font-weight: 600; }
+.bk-date { color: var(--text-muted); font-size: .82rem; white-space: nowrap; }
+.bk-code {
+  background: #f1f5f9; color: #4f46e5;
+  padding: .15rem .5rem; border-radius: .3rem; font-size: .82rem;
+}
+.bk-size-badge {
+  background: #ede9fe; color: #4f46e5;
+  padding: .2rem .6rem; border-radius: 99px; font-size: .78rem; font-weight: 600;
+}
+
+.bk-actions { display: flex; gap: .4rem; flex-wrap: nowrap; }
+.bk-action-btn {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .32rem .72rem; border-radius: .4rem;
+  font-size: .78rem; font-weight: 600; border: 1.5px solid transparent;
+  cursor: pointer; text-decoration: none; transition: all .15s; white-space: nowrap;
+}
+.bk-btn-green { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+.bk-btn-green:hover { background: #dcfce7; color: #15803d; }
+.bk-btn-blue  { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.bk-btn-blue:hover  { background: #dbeafe; color: #1d4ed8; }
+.bk-btn-red   { background: #fff1f2; color: #dc2626; border-color: #fecaca; }
+.bk-btn-red:hover   { background: #fee2e2; color: #b91c1c; }
+
+.bk-empty {
+  display: flex; flex-direction: column; align-items: center; gap: .75rem;
+  padding: 3rem 1.5rem; color: var(--text-muted); font-size: .9rem;
+}
+.bk-empty i { font-size: 2.5rem; opacity: .4; }
+
+.bk-notice {
+  display: flex; gap: 1rem; align-items: flex-start;
+  background: #fffbeb; border: 1.5px solid #fde68a;
+  border-radius: var(--radius); padding: 1rem 1.25rem;
+}
+.bk-notice-icon { font-size: 1.2rem; color: #d97706; flex-shrink: 0; margin-top: .1rem; }
+.bk-notice-title { font-weight: 600; color: #92400e; margin-bottom: .4rem; font-size: .9rem; }
+.bk-notice-list { margin: 0; padding-left: 1.25rem; color: #78350f; font-size: .84rem; }
+.bk-notice-list li { margin-bottom: .3rem; }
 </style>
 {% endblock %}

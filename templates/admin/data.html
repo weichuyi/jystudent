@@ -1,172 +1,158 @@
 {% extends "base.html" %}
-
-{% block title %}数据管理{% endblock %}
-
+{% block title %}数据导出{% endblock %}
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <h1 class="mb-3">
-                <i class="bi bi-download"></i> 数据导出/导入管理
-            </h1>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('admin_index') }}">管理中心</a></li>
-                    <li class="breadcrumb-item active">数据管理</li>
-                </ol>
-            </nav>
+<div class="dt-wrap admin-page-wrap">
+
+    <!-- 页头 -->
+    <div class="dt-header">
+        <div>
+            <h2 class="dt-title"><i class="bi bi-file-earmark-spreadsheet-fill"></i> 数据导出</h2>
+            <p class="dt-sub">
+                <a href="{{ url_for('admin_index') }}" class="dt-breadcrumb">管理中心</a>
+                <i class="bi bi-chevron-right dt-chevron"></i>数据导出
+            </p>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-12">
-            <a href="{{ url_for('admin_index') }}" class="btn btn-secondary mb-3">
-                <i class="bi bi-arrow-left"></i> 返回
-            </a>
+    <!-- 导出卡片 -->
+    <div class="dt-grid">
+
+        <div class="dt-card">
+            <div class="dt-card-icon icon-blue"><i class="bi bi-people-fill"></i></div>
+            <div class="dt-card-title">学生数据</div>
+            <div class="dt-card-desc">导出所有学生的基本信息，包括学号、姓名、班级、联系方式等字段</div>
+            <form method="POST" action="{{ url_for('admin_export_students') }}">
+                <button type="submit" class="dt-export-btn btn-blue">
+                    <i class="bi bi-download"></i> 导出 Excel
+                </button>
+            </form>
         </div>
+
+        <div class="dt-card">
+            <div class="dt-card-icon icon-green"><i class="bi bi-bar-chart-fill"></i></div>
+            <div class="dt-card-title">成绩数据</div>
+            <div class="dt-card-desc">导出所有成绩记录，包含课程名称、学生姓名、分数、录入时间等字段</div>
+            <form method="POST" action="{{ url_for('admin_export_scores') }}">
+                <button type="submit" class="dt-export-btn btn-green">
+                    <i class="bi bi-download"></i> 导出 Excel
+                </button>
+            </form>
+        </div>
+
+        <div class="dt-card">
+            <div class="dt-card-icon icon-amber"><i class="bi bi-book-fill"></i></div>
+            <div class="dt-card-title">课程数据</div>
+            <div class="dt-card-desc">导出所有课程信息，包含课程编号、名称、授课教师、学分等字段</div>
+            <form method="POST" action="{{ url_for('admin_export_courses') }}">
+                <button type="submit" class="dt-export-btn btn-amber">
+                    <i class="bi bi-download"></i> 导出 Excel
+                </button>
+            </form>
+        </div>
+
     </div>
 
-    <!-- 导出部分 -->
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0"><i class="bi bi-arrow-up-right"></i> 数据导出</h5>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted mb-4">将数据导出为Excel文件，可用于报告、分析或备份</p>
-                    
-                    <div class="row">
-                        <!-- 导出学生数据 -->
-                        <div class="col-md-4">
-                            <div class="card border-success mb-3">
-                                <div class="card-body">
-                                    <h5 class="card-title">
-                                        <i class="bi bi-people"></i> 学生数据
-                                    </h5>
-                                    <p class="card-text text-muted">包含所有学生的基本信息</p>
-                                    <form method="POST" action="{{ url_for('admin_export_students') }}" class="d-inline-block w-100">
-                                        <button type="submit" class="btn btn-success w-100">
-                                            <i class="bi bi-download"></i> 导出为 Excel
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 导出成绩数据 -->
-                        <div class="col-md-4">
-                            <div class="card border-info mb-3">
-                                <div class="card-body">
-                                    <h5 class="card-title">
-                                        <i class="bi bi-bar-chart"></i> 成绩数据
-                                    </h5>
-                                    <p class="card-text text-muted">包含所有的成绩记录</p>
-                                    <form method="POST" action="{{ url_for('admin_export_scores') }}" class="d-inline-block w-100">
-                                        <button type="submit" class="btn btn-info w-100">
-                                            <i class="bi bi-download"></i> 导出为 Excel
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 导出课程数据 -->
-                        <div class="col-md-4">
-                            <div class="card border-warning mb-3">
-                                <div class="card-body">
-                                    <h5 class="card-title">
-                                        <i class="bi bi-book"></i> 课程数据
-                                    </h5>
-                                    <p class="card-text text-muted">包含所有的课程信息</p>
-                                    <form method="POST" action="{{ url_for('admin_export_courses') }}" class="d-inline-block w-100">
-                                        <button type="submit" class="btn btn-warning w-100">
-                                            <i class="bi bi-download"></i> 导出为 Excel
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <!-- 说明卡片 -->
+    <div class="dt-info-card">
+        <div class="dt-info-head">
+            <i class="bi bi-lightbulb-fill" style="color:#d97706;font-size:1rem;"></i>
+            <span style="font-weight:600;font-size:.92rem;color:var(--text);">导出说明</span>
+        </div>
+        <div class="dt-info-cols">
+            <div class="dt-info-col">
+                <div class="dt-info-sub">用途</div>
+                <ul class="dt-info-list">
+                    <li><i class="bi bi-graph-up" style="color:#4f46e5;"></i>数据分析与统计报表</li>
+                    <li><i class="bi bi-shield-check" style="color:#059669;"></i>数据备份与存档</li>
+                    <li><i class="bi bi-arrow-left-right" style="color:#d97706;"></i>系统迁移数据准备</li>
+                    <li><i class="bi bi-envelope" style="color:#2563eb;"></i>生成可分享的 Excel 报表</li>
+                </ul>
+            </div>
+            <div class="dt-info-col">
+                <div class="dt-info-sub">文件格式</div>
+                <ul class="dt-info-list">
+                    <li><i class="bi bi-file-earmark-excel" style="color:#16a34a;"></i>XLSX 格式（兼容 Excel）</li>
+                    <li><i class="bi bi-clock" style="color:#4f46e5;"></i>文件名含导出时间戳</li>
+                    <li><i class="bi bi-folder-symlink" style="color:#d97706;"></i>自动下载到浏览器下载目录</li>
+                    <li><i class="bi bi-pencil" style="color:#dc2626;"></i>导出后可在 Excel 中直接编辑</li>
+                </ul>
             </div>
         </div>
     </div>
 
-    <!-- 导入部分 -->
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-arrow-down-left"></i> 数据导入</h5>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info" role="alert">
-                        <i class="bi bi-info-circle"></i> 
-                        <strong>说明：</strong> 数据导入功能正在开发中。目前可以通过以下方式导入数据：
-                        <ul class="mt-2 mb-0">
-                            <li>使用系统内的表单逐条添加数据</li>
-                            <li>导入现有的Excel文件（开发中）</li>
-                            <li>通过API批量导入（开发中）</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 使用指南 -->
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-dark text-white">
-                    <h5 class="mb-0"><i class="bi bi-question-circle"></i> 使用指南</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6>导出数据的用途：</h6>
-                            <ul>
-                                <li>📊 <strong>数据分析</strong>：使用Excel进行深入的数据分析</li>
-                                <li>📈 <strong>报表生成</strong>：生成各类报表和统计信息</li>
-                                <li>💾 <strong>数据备份</strong>：以Excel格式保留数据副本</li>
-                                <li>📤 <strong>数据迁移</strong>：导出后可用于迁移到其他系统</li>
-                                <li>📧 <strong>邮件发送</strong>：生成的Excel可直接邮件分享</li>
-                            </ul>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>导出文件说明：</h6>
-                            <ul>
-                                <li>📁 <strong>文件格式</strong>：XLSX格式（Microsoft Excel）</li>
-                                <li>⏰ <strong>时间戳</strong>：文件名包含导出时间戳</li>
-                                <li>📂 <strong>保存位置</strong>：下载到浏览器的默认下载目录</li>
-                                <li>🔒 <strong>数据完整</strong>：包含所有数据和完整信息</li>
-                                <li>✏️ <strong>可编辑</strong>：导出后可在Excel中修改和再加工</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <style>
-    .card {
-        border: none;
-        border-radius: 0.5rem;
-    }
-    
-    .card-header {
-        border-radius: 0.5rem 0.5rem 0 0;
-    }
-    
-    .card-body ul {
-        padding-left: 1.5rem;
-    }
-    
-    .card-body ul li {
-        margin-bottom: 0.5rem;
-    }
+.dt-wrap { width: 100%; }
+
+.dt-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.75rem; flex-wrap: wrap; gap: .75rem;
+}
+.dt-title { font-size: 1.35rem; font-weight: 700; color: var(--text); margin: 0 0 .2rem; }
+.dt-title i { color: var(--primary); margin-right: .4rem; }
+.dt-sub { color: var(--text-muted); margin: 0; font-size: .85rem; }
+.dt-breadcrumb { color: var(--primary); text-decoration: none; }
+.dt-breadcrumb:hover { text-decoration: underline; }
+.dt-chevron { font-size: .7rem; color: var(--text-muted); margin: 0 .3rem; }
+
+.dt-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1rem; margin-bottom: 1.25rem;
+}
+@media (max-width: 768px) { .dt-grid { grid-template-columns: 1fr; } }
+
+.dt-card {
+    background: var(--card-bg); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 1.4rem 1.35rem 1.25rem;
+    display: flex; flex-direction: column; gap: .75rem;
+    box-shadow: var(--shadow-sm); transition: var(--transition);
+}
+.dt-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+
+.dt-card-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 2.6rem; height: 2.6rem; border-radius: .5rem; font-size: 1.2rem;
+}
+.icon-blue  { background: #ede9fe; color: #4f46e5; }
+.icon-green { background: #dcfce7; color: #16a34a; }
+.icon-amber { background: #fef3c7; color: #d97706; }
+
+.dt-card-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+.dt-card-desc  { font-size: .84rem; color: var(--text-muted); line-height: 1.55; flex: 1; }
+
+.dt-export-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+    padding: .48rem 1rem; border-radius: .4rem; font-size: .84rem; font-weight: 600;
+    border: none; cursor: pointer; transition: all .15s; width: 100%;
+}
+.btn-blue  { background: #4f46e5; color: #fff; }
+.btn-blue:hover  { background: #4338ca; }
+.btn-green { background: #059669; color: #fff; }
+.btn-green:hover { background: #047857; }
+.btn-amber { background: #d97706; color: #fff; }
+.btn-amber:hover { background: #b45309; }
+
+.dt-info-card {
+    background: var(--card-bg); border: 1.5px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm);
+}
+.dt-info-head {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .85rem 1.25rem; border-bottom: 1px solid var(--border); background: #f8fafc;
+}
+.dt-info-cols { display: grid; grid-template-columns: 1fr 1fr; }
+@media (max-width: 640px) { .dt-info-cols { grid-template-columns: 1fr; } }
+.dt-info-col { padding: 1rem 1.25rem; }
+.dt-info-cols .dt-info-col:first-child { border-right: 1px solid var(--border); }
+.dt-info-sub {
+    font-size: .78rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--text-muted); margin-bottom: .6rem;
+}
+.dt-info-list { list-style: none; padding: 0; margin: 0; }
+.dt-info-list li {
+    display: flex; align-items: center; gap: .5rem;
+    font-size: .84rem; color: var(--text); margin-bottom: .45rem;
+}
 </style>
 {% endblock %}

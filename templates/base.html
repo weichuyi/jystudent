@@ -74,18 +74,6 @@
          href="{{ url_for('admin_index') }}">
         <i class="bi bi-gear-fill nav-icon"></i> 管理中心
       </a>
-      <a class="sidebar-link {% if request.endpoint == 'admin_backup_list' %}active{% endif %}"
-         href="{{ url_for('admin_backup_list') }}">
-        <i class="bi bi-cloud-check nav-icon"></i> 备份管理
-      </a>
-      <a class="sidebar-link {% if request.endpoint == 'admin_data' %}active{% endif %}"
-         href="{{ url_for('admin_data') }}">
-        <i class="bi bi-download nav-icon"></i> 数据导出
-      </a>
-      <a class="sidebar-link {% if request.endpoint == 'admin_system_info' %}active{% endif %}"
-         href="{{ url_for('admin_system_info') }}">
-        <i class="bi bi-info-circle-fill nav-icon"></i> 系统信息
-      </a>
       <a class="sidebar-link {% if 'user' in (request.endpoint or '') %}active{% endif %}"
          href="{{ url_for('list_users') }}">
         <i class="bi bi-shield-fill-check nav-icon"></i> 用户管理
@@ -168,6 +156,80 @@ function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebarOverlay').classList.remove('open');
 }
+
+// Keep sidebar scroll position across page navigations.
+(function () {
+  const SCROLL_KEY = 'jy.sidebar.scrollTop';
+
+  function getScrollContainer() {
+    return document.querySelector('.sidebar-nav') || document.getElementById('sidebar');
+  }
+
+  function saveSidebarScroll() {
+    const container = getScrollContainer();
+    if (!container) return;
+    try {
+      localStorage.setItem(SCROLL_KEY, String(container.scrollTop || 0));
+    } catch (e) {
+      // Ignore storage failures (e.g., private mode restrictions).
+    }
+  }
+
+  function restoreSidebarScroll() {
+    const container = getScrollContainer();
+    if (!container) return;
+    try {
+      const saved = Number(localStorage.getItem(SCROLL_KEY) || '0');
+      if (!Number.isNaN(saved) && saved > 0) {
+        container.scrollTop = saved;
+      }
+    } catch (e) {
+      // Ignore storage failures.
+    }
+  }
+
+  // Run once immediately to avoid visible jump after load.
+  restoreSidebarScroll();
+
+  const container = getScrollContainer();
+  if (container) {
+    container.addEventListener('scroll', saveSidebarScroll, { passive: true });
+  }
+
+  // Save immediately when user clicks a nav item and page is about to navigate.
+  const navLinks = document.querySelectorAll('.sidebar-nav .sidebar-link');
+  navLinks.forEach(function (link) {
+    link.addEventListener('click', saveSidebarScroll);
+  });
+
+  // Save for all in-site navigations (e.g., cards in main content).
+  document.addEventListener('click', function (event) {
+    const link = event.target.closest('a[href]');
+    if (!link) return;
+
+    const href = link.getAttribute('href') || '';
+    if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+    if (link.target && link.target.toLowerCase() === '_blank') return;
+
+    saveSidebarScroll();
+  }, true);
+
+  // Some browsers restore from BFCache without full reload.
+  window.addEventListener('pageshow', function (event) {
+    if (event.persisted) {
+      restoreSidebarScroll();
+    }
+  });
+  window.addEventListener('pagehide', saveSidebarScroll);
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+      saveSidebarScroll();
+    }
+  });
+
+  window.addEventListener('beforeunload', saveSidebarScroll);
+})();
 </script>
 {% else %}
 </main>
