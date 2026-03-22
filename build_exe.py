@@ -18,7 +18,7 @@ def main():
     project_root = Path(__file__).parent
     dist_dir = project_root / "dist"
     build_dir = project_root / "build"
-    spec_file = project_root / "app.spec"
+    spec_file = project_root / "SmartCampusPlatform.spec"
 
     print("=" * 60)
     print("智慧校园管理平台 - PyInstaller 打包工具")
@@ -53,6 +53,7 @@ def main():
         "--windowed",                   # 无控制台窗口（可选）
         "--add-data", f"templates{os.pathsep}templates",
         "--add-data", f"static{os.pathsep}static",
+        "--add-data", f"app.py{os.pathsep}.",
         "--collect-submodules", "flask",
         "--collect-submodules", "flask_sqlalchemy",
         "--hidden-import", "flask_sqlalchemy",
@@ -85,7 +86,7 @@ def main():
         print(f"  大小: {size_mb:.2f} MB")
         print("\n使用方法:")
         print(f"  1. 双击运行: {exe_file.name}")
-        print(f"  2. 应用会自动打开浏览器访问 http://127.0.0.1:5000")
+        print(f"  2. 应用会自动打开浏览器访问 http://127.0.0.1:5001")
         print(f"  3. 默认管理员账号: admin / weichuy1")
         return 0
     else:

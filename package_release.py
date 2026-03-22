@@ -61,7 +61,7 @@ def copy_payload(target_dir: Path, include_db: bool) -> None:
         "智慧校园管理平台 - 测试包使用说明\n"
         "================================\n\n"
         "1. 双击 SmartCampusPlatform.exe\n"
-        "2. 浏览器将自动打开 http://127.0.0.1:5000\n"
+        "2. 浏览器将自动打开 http://127.0.0.1:5001\n"
         "3. 默认管理员账号: admin\n"
         "4. 默认管理员密码: weichuy1\n\n"
         "说明:\n"
