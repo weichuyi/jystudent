@@ -54,6 +54,16 @@
                                 {% endfor %}
                             </select>
                         </div>
+
+                        <div class="col-12">
+                            <label class="form-label">协同教师（可多选）</label>
+                            <select class="form-select" name="co_teacher_ids" multiple size="5">
+                                {% for t in teachers %}
+                                <option value="{{ t.id }}">{{ t.name }}（{{ t.teacher_no }}）</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">按住 Ctrl 可多选；无需协同时可不选。</small>
+                        </div>
                     </div>
                 </div>
 
