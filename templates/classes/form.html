@@ -16,22 +16,22 @@
                 <div class="card-body">
                     <div class="mb-3">
                         <label class="form-label">班级编号 *</label>
-                        <input class="form-control" type="text" name="class_no" required>
+                        <input class="form-control" type="text" name="class_no" value="{{ cls.class_no or '' }}" required>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">班级名称 *</label>
-                        <input class="form-control" type="text" name="class_name" required>
+                        <input class="form-control" type="text" name="class_name" value="{{ cls.class_name or '' }}" required>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">年级</label>
                         <select class="form-select" name="grade">
                             <option value="">请选择</option>
-                            <option value="一年级">一年级</option>
-                            <option value="二年级">二年级</option>
-                            <option value="三年级">三年级</option>
-                            <option value="四年级">四年级</option>
+                            <option value="一年级" {% if cls.grade == '一年级' %}selected{% endif %}>一年级</option>
+                            <option value="二年级" {% if cls.grade == '二年级' %}selected{% endif %}>二年级</option>
+                            <option value="三年级" {% if cls.grade == '三年级' %}selected{% endif %}>三年级</option>
+                            <option value="四年级" {% if cls.grade == '四年级' %}selected{% endif %}>四年级</option>
                         </select>
                     </div>
 
@@ -40,7 +40,7 @@
                         <select class="form-select" name="headteacher_id">
                             <option value="">请选择班主任</option>
                             {% for t in teachers %}
-                            <option value="{{ t.id }}">{{ t.name }}</option>
+                            <option value="{{ t.id }}" {% if selected_teacher_id == t.id %}selected{% endif %}>{{ t.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
