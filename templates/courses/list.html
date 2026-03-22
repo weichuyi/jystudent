@@ -63,7 +63,17 @@
           <td class="fw-semibold">{{ course.course_name }}</td>
           <td>{{ course.credits or '' }}</td>
           <td>{{ course.hours or '' }}</td>
-          <td>{{ course.teacher.name if course.teacher else '' }}</td>
+          <td>
+            {% if course.teacher %}
+              {{ course.teacher.name }}
+            {% endif %}
+            {% if course.co_teachers %}
+              {% if course.teacher %}、{% endif %}
+              {% for t in course.co_teachers %}
+                {{ t.name }}{% if not loop.last %}、{% endif %}
+              {% endfor %}
+            {% endif %}
+          </td>
           <td>{{ course.semester or '' }}</td>
           <td>{{ course.enrollments|length }}</td>
           <td>
