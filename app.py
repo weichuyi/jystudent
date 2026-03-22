@@ -383,6 +383,7 @@ def add_student():
         gender = request.form.get("gender", "").strip()
         age_raw = request.form.get("age", "").strip()
         class_id = request.form.get("class_id", type=int)
+        status = request.form.get("status", "enrolled").strip() or "enrolled"
         phone = request.form.get("phone", "").strip()
         email = request.form.get("email", "").strip()
         major = request.form.get("major", "").strip()
@@ -395,11 +396,44 @@ def add_student():
             errors.append("姓名不能为空")
         if age_raw and not age_raw.isdigit():
             errors.append("年龄必须是数字")
+        if status not in ["enrolled", "leave", "dropout"]:
+            errors.append("学生状态不合法")
 
         if errors:
             for error in errors:
                 flash(error, "danger")
             return render_template("students/form.html", student=Student(), classes=classes, action="add")
+
+        if Student.query.filter_by(student_no=student_no).first():
+            flash("学号已存在", "error")
+            student = Student(
+                student_no=student_no,
+                name=name,
+                gender=gender,
+                age=int(age_raw) if age_raw and age_raw.isdigit() else None,
+                class_id=class_id,
+                status=status,
+                phone=phone,
+                email=email,
+                major=major,
+                id_number=id_number,
+            )
+            return render_template("students/form.html", student=student, classes=classes, action="add")
+
+        if User.query.filter_by(username=student_no).first():
+            flash("该学号已被占用为系统用户名，请使用其他学号", "error")
+            student = Student(
+                student_no=student_no,
+                name=name,
+                gender=gender,
+                age=int(age_raw) if age_raw and age_raw.isdigit() else None,
+                class_id=class_id,
+                phone=phone,
+                email=email,
+                major=major,
+                id_number=id_number,
+            )
+            return render_template("students/form.html", student=student, classes=classes, action="add")
 
         if session.get("role") == "teacher":
             if not class_id or class_id not in managed_ids:
@@ -410,6 +444,7 @@ def add_student():
                     gender=gender,
                     age=int(age_raw) if age_raw and age_raw.isdigit() else None,
                     class_id=class_id,
+                    status=status,
                     phone=phone,
                     email=email,
                     major=major,
@@ -418,17 +453,30 @@ def add_student():
                 return render_template("students/form.html", student=student, classes=classes, action="add")
 
         try:
+            user = User(
+                username=student_no,
+                full_name=name,
+                role="student",
+                email=email or None,
+                phone=phone or None,
+                is_active=True,
+            )
+            user.set_password("123456")
+            db.session.add(user)
+            db.session.flush()
+
             student = Student(
+                user_id=user.id,
                 student_no=student_no,
                 name=name,
                 gender=gender,
                 age=int(age_raw) if age_raw else None,
                 class_id=class_id,
+                status=status,
                 phone=phone,
                 email=email,
                 major=major,
                 id_number=id_number,
-                status="enrolled"
             )
             db.session.add(student)
             db.session.commit()
@@ -439,12 +487,12 @@ def add_student():
                 action="create",
                 module="student",
                 record_id=student.id,
-                details=f"新增学生 {name}({student_no})"
+                details=f"新增学生 {name}({student_no}) 并创建学生账号"
             )
             db.session.add(log)
             db.session.commit()
 
-            flash("新增学生成功", "success")
+            flash("新增学生成功，已同步创建学生账号（用户名：学号，初始密码：123456）", "success")
             return redirect(url_for("list_students"))
         except Exception as e:
             db.session.rollback()
@@ -468,22 +516,129 @@ def edit_student(student_id):
         classes = Class.query.filter(Class.id.in_(managed_ids)).all() if managed_ids else []
 
     if request.method == "POST":
-        student.student_no = request.form.get("student_no", "").strip()
-        student.name = request.form.get("name", "").strip()
-        student.gender = request.form.get("gender", "").strip()
+        student_no = request.form.get("student_no", "").strip()
+        name = request.form.get("name", "").strip()
+        gender = request.form.get("gender", "").strip()
         age_raw = request.form.get("age", "").strip()
+        class_id = request.form.get("class_id", type=int)
+        status = request.form.get("status", "enrolled").strip() or "enrolled"
+        phone = request.form.get("phone", "").strip()
+        email = request.form.get("email", "").strip()
+        major = request.form.get("major", "").strip()
+        id_number = request.form.get("id_number", "").strip()
+
+        if not student_no or not name:
+            flash("学号和姓名不能为空", "error")
+            student.student_no = student_no
+            student.name = name
+            student.gender = gender
+            student.age = int(age_raw) if age_raw.isdigit() else None
+            student.class_id = class_id
+            student.status = status
+            student.phone = phone
+            student.email = email
+            student.major = major
+            student.id_number = id_number
+            return render_template("students/form.html", student=student, classes=classes, action="edit")
+
+        if age_raw and not age_raw.isdigit():
+            flash("年龄必须是数字", "error")
+            student.student_no = student_no
+            student.name = name
+            student.gender = gender
+            student.age = None
+            student.class_id = class_id
+            student.status = status
+            student.phone = phone
+            student.email = email
+            student.major = major
+            student.id_number = id_number
+            return render_template("students/form.html", student=student, classes=classes, action="edit")
+
+        if status not in ["enrolled", "leave", "dropout"]:
+            flash("学生状态不合法", "error")
+            student.student_no = student_no
+            student.name = name
+            student.gender = gender
+            student.age = int(age_raw) if age_raw else None
+            student.class_id = class_id
+            student.status = status
+            student.phone = phone
+            student.email = email
+            student.major = major
+            student.id_number = id_number
+            return render_template("students/form.html", student=student, classes=classes, action="edit")
+
+        student_no_exists = Student.query.filter(
+            Student.student_no == student_no,
+            Student.id != student.id
+        ).first()
+        if student_no_exists:
+            flash("学号已存在，请使用其他学号", "error")
+            student.student_no = student_no
+            student.name = name
+            student.gender = gender
+            student.age = int(age_raw) if age_raw else None
+            student.class_id = class_id
+            student.status = status
+            student.phone = phone
+            student.email = email
+            student.major = major
+            student.id_number = id_number
+            return render_template("students/form.html", student=student, classes=classes, action="edit")
+
+        linked_user = student.user
+        username_holder = User.query.filter_by(username=student_no).first()
+        if username_holder and (not linked_user or username_holder.id != linked_user.id):
+            flash("该学号已被占用为系统用户名，请使用其他学号", "error")
+            student.student_no = student_no
+            student.name = name
+            student.gender = gender
+            student.age = int(age_raw) if age_raw else None
+            student.class_id = class_id
+            student.status = status
+            student.phone = phone
+            student.email = email
+            student.major = major
+            student.id_number = id_number
+            return render_template("students/form.html", student=student, classes=classes, action="edit")
+
+        student.student_no = student_no
+        student.name = name
+        student.gender = gender
         student.age = int(age_raw) if age_raw else None
-        student.class_id = request.form.get("class_id", type=int)
-        student.phone = request.form.get("phone", "").strip()
-        student.email = request.form.get("email", "").strip()
-        student.major = request.form.get("major", "").strip()
-        student.id_number = request.form.get("id_number", "").strip()
+        student.class_id = class_id
+        student.status = status
+        student.phone = phone
+        student.email = email
+        student.major = major
+        student.id_number = id_number
 
         if session.get("role") == "teacher" and student.class_id not in managed_ids:
             flash("教师不能把学生调整到非本人负责的班级", "error")
             return render_template("students/form.html", student=student, classes=classes, action="edit")
 
         try:
+            if not linked_user:
+                linked_user = User(
+                    username=student.student_no,
+                    full_name=student.name,
+                    role="student",
+                    email=student.email or None,
+                    phone=student.phone or None,
+                    is_active=True,
+                )
+                linked_user.set_password("123456")
+                db.session.add(linked_user)
+                db.session.flush()
+                student.user_id = linked_user.id
+            else:
+                linked_user.username = student.student_no
+                linked_user.full_name = student.name
+                linked_user.email = student.email or None
+                linked_user.phone = student.phone or None
+                linked_user.role = "student"
+
             db.session.commit()
 
             log = OperationLog(
@@ -496,7 +651,7 @@ def edit_student(student_id):
             db.session.add(log)
             db.session.commit()
 
-            flash("修改成功", "success")
+            flash("修改成功，学生账号信息已同步", "success")
             return redirect(url_for("list_students"))
         except Exception as e:
             db.session.rollback()
@@ -510,6 +665,7 @@ def edit_student(student_id):
 def delete_student(student_id):
     student = Student.query.get_or_404(student_id)
     name = student.name
+    linked_user = student.user
 
     try:
         log = OperationLog(
@@ -521,6 +677,8 @@ def delete_student(student_id):
         )
         db.session.add(log)
         db.session.delete(student)
+        if linked_user:
+            db.session.delete(linked_user)
         db.session.commit()
 
         flash("删除成功", "success")
@@ -536,7 +694,15 @@ def delete_student(student_id):
 @app.route("/classes")
 @login_required
 def list_classes():
-    classes = Class.query.order_by(Class.id.desc()).all()
+    q = Class.query
+    if session.get("role") == "teacher":
+        managed_ids = _teacher_managed_class_ids(session["user_id"])
+        if managed_ids:
+            q = q.filter(Class.id.in_(managed_ids))
+        else:
+            q = q.filter(Class.id == -1)
+
+    classes = q.order_by(Class.id.desc()).all()
     teachers = Teacher.query.all()
     return render_template("classes/list.html", classes=classes, teachers=teachers)
 
@@ -794,6 +960,36 @@ def edit_class(class_id):
     )
 
 
+@app.route("/classes/delete/<int:class_id>", methods=["POST"])
+@role_required("admin")
+def delete_class(class_id):
+    cls = Class.query.get_or_404(class_id)
+
+    try:
+        student_count = Student.query.filter_by(class_id=cls.id).count()
+        if student_count > 0:
+            flash("该班级下还有学生，无法删除，请先转移或删除学生", "error")
+            return redirect(url_for("list_classes"))
+
+        log = OperationLog(
+            user_id=session["user_id"],
+            action="delete",
+            module="class",
+            record_id=cls.id,
+            details=f"删除班级 {cls.class_name}({cls.class_no})"
+        )
+        db.session.add(log)
+        db.session.delete(cls)
+        db.session.commit()
+
+        flash("删除成功", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"删除失败：{str(e)}", "danger")
+
+    return redirect(url_for("list_classes"))
+
+
 # ======================== 教师管理路由 ========================
 
 @app.route("/teachers")
@@ -857,7 +1053,24 @@ def add_teacher():
             flash("教工号已存在，请使用其他教工号", "error")
             return render_template("teachers/form.html", teacher=teacher, action="add")
 
+        if User.query.filter_by(username=teacher.teacher_no).first():
+            flash("该教工号已被占用为系统用户名，请使用其他教工号", "error")
+            return render_template("teachers/form.html", teacher=teacher, action="add")
+
         try:
+            user = User(
+                username=teacher.teacher_no,
+                full_name=teacher.name,
+                role="teacher",
+                email=teacher.email or None,
+                phone=teacher.phone or None,
+                is_active=True,
+            )
+            user.set_password("123456")
+            db.session.add(user)
+            db.session.flush()
+
+            teacher.user_id = user.id
             db.session.add(teacher)
             db.session.commit()
 
@@ -866,12 +1079,12 @@ def add_teacher():
                 action="create",
                 module="teacher",
                 record_id=teacher.id,
-                details=f"新增教师 {teacher.name}({teacher.teacher_no})"
+                details=f"新增教师 {teacher.name}({teacher.teacher_no}) 并创建教师账号"
             )
             db.session.add(log)
             db.session.commit()
 
-            flash("新增教师成功", "success")
+            flash("新增教师成功，已同步创建教师账号（用户名：教工号，初始密码：123456）", "success")
             return redirect(url_for("list_teachers"))
         except Exception:
             db.session.rollback()
@@ -887,15 +1100,82 @@ def edit_teacher(teacher_id):
     teacher = Teacher.query.get_or_404(teacher_id)
 
     if request.method == "POST":
-        teacher.teacher_no = request.form.get("teacher_no", "").strip()
-        teacher.name = request.form.get("name", "").strip()
-        teacher.gender = request.form.get("gender", "").strip()
-        teacher.department = request.form.get("department", "").strip()
-        teacher.phone = request.form.get("phone", "").strip()
-        teacher.email = request.form.get("email", "").strip()
-        teacher.qualification = request.form.get("qualification", "").strip()
+        teacher_no = request.form.get("teacher_no", "").strip()
+        name = request.form.get("name", "").strip()
+        gender = request.form.get("gender", "").strip()
+        department = request.form.get("department", "").strip()
+        phone = request.form.get("phone", "").strip()
+        email = request.form.get("email", "").strip()
+        qualification = request.form.get("qualification", "").strip()
+
+        if not teacher_no or not name:
+            flash("教工号和姓名不能为空", "error")
+            teacher.teacher_no = teacher_no
+            teacher.name = name
+            teacher.gender = gender
+            teacher.department = department
+            teacher.phone = phone
+            teacher.email = email
+            teacher.qualification = qualification
+            return render_template("teachers/form.html", teacher=teacher, action="edit")
+
+        teacher_no_exists = Teacher.query.filter(
+            Teacher.teacher_no == teacher_no,
+            Teacher.id != teacher.id
+        ).first()
+        if teacher_no_exists:
+            flash("教工号已存在，请使用其他教工号", "error")
+            teacher.teacher_no = teacher_no
+            teacher.name = name
+            teacher.gender = gender
+            teacher.department = department
+            teacher.phone = phone
+            teacher.email = email
+            teacher.qualification = qualification
+            return render_template("teachers/form.html", teacher=teacher, action="edit")
+
+        linked_user = teacher.user
+        username_holder = User.query.filter_by(username=teacher_no).first()
+        if username_holder and (not linked_user or username_holder.id != linked_user.id):
+            flash("该教工号已被占用为系统用户名，请使用其他教工号", "error")
+            teacher.teacher_no = teacher_no
+            teacher.name = name
+            teacher.gender = gender
+            teacher.department = department
+            teacher.phone = phone
+            teacher.email = email
+            teacher.qualification = qualification
+            return render_template("teachers/form.html", teacher=teacher, action="edit")
+
+        teacher.teacher_no = teacher_no
+        teacher.name = name
+        teacher.gender = gender
+        teacher.department = department
+        teacher.phone = phone
+        teacher.email = email
+        teacher.qualification = qualification
 
         try:
+            if not linked_user:
+                linked_user = User(
+                    username=teacher.teacher_no,
+                    full_name=teacher.name,
+                    role="teacher",
+                    email=teacher.email or None,
+                    phone=teacher.phone or None,
+                    is_active=True,
+                )
+                linked_user.set_password("123456")
+                db.session.add(linked_user)
+                db.session.flush()
+                teacher.user_id = linked_user.id
+            else:
+                linked_user.username = teacher.teacher_no
+                linked_user.full_name = teacher.name
+                linked_user.email = teacher.email or None
+                linked_user.phone = teacher.phone or None
+                linked_user.role = "teacher"
+
             db.session.commit()
 
             log = OperationLog(
@@ -908,7 +1188,7 @@ def edit_teacher(teacher_id):
             db.session.add(log)
             db.session.commit()
 
-            flash("修改成功", "success")
+            flash("修改成功，教师账号信息已同步", "success")
             return redirect(url_for("list_teachers"))
         except Exception as e:
             db.session.rollback()
@@ -922,6 +1202,11 @@ def edit_teacher(teacher_id):
 def delete_teacher(teacher_id):
     teacher = Teacher.query.get_or_404(teacher_id)
     name = teacher.name
+    linked_user = teacher.user
+
+    if linked_user and linked_user.id == session.get("user_id"):
+        flash("不能删除当前登录账号对应的教师信息", "error")
+        return redirect(url_for("list_teachers"))
 
     try:
         log = OperationLog(
@@ -932,10 +1217,27 @@ def delete_teacher(teacher_id):
             details=f"删除教师 {name}({teacher.teacher_no})"
         )
         db.session.add(log)
+
+        # 先清理班级上的班主任引用，避免后续删除教师账号时产生关联问题。
+        Class.query.filter_by(headteacher_id=teacher.user_id).update({"headteacher_id": None})
+
+        user_deleted = False
+        if linked_user:
+            has_related_courses = Course.query.filter_by(teacher_id=teacher.id).count() > 0
+            if has_related_courses:
+                linked_user.is_active = False
+                linked_user.role = "teacher"
+            else:
+                db.session.delete(linked_user)
+                user_deleted = True
+
         db.session.delete(teacher)
         db.session.commit()
 
-        flash("删除成功", "success")
+        if linked_user and not user_deleted:
+            flash("删除成功，教师账号已自动禁用", "success")
+        else:
+            flash("删除成功", "success")
     except Exception as e:
         db.session.rollback()
         flash(f"删除失败：{str(e)}", "danger")
@@ -1102,6 +1404,17 @@ def list_scores():
             return redirect(url_for("dashboard"))
         q = Enrollment.query.filter_by(student_id=student.id)
         enrollments = q.all()
+    elif session.get("role") == "teacher":
+        managed_ids = _teacher_managed_class_ids(session["user_id"])
+        if managed_ids:
+            enrollments = (
+                Enrollment.query
+                .join(Student, Enrollment.student_id == Student.id)
+                .filter(Student.class_id.in_(managed_ids))
+                .all()
+            )
+        else:
+            enrollments = []
     else:
         enrollments = Enrollment.query.all()
 
@@ -1112,6 +1425,12 @@ def list_scores():
 @role_required("admin", "teacher")
 def record_score(enrollment_id):
     enrollment = Enrollment.query.get_or_404(enrollment_id)
+
+    if session.get("role") == "teacher":
+        managed_ids = _teacher_managed_class_ids(session["user_id"])
+        if enrollment.student.class_id not in managed_ids:
+            flash("你只能录入自己负责班级学生的成绩", "error")
+            return redirect(url_for("list_scores"))
 
     if request.method == "POST":
         score_value = request.form.get("score", type=float)
@@ -1257,6 +1576,54 @@ def edit_user(user_id):
             flash(f"修改失败：{str(e)}", "danger")
 
     return render_template("admin/user_form.html", user=user, action="edit")
+
+
+@app.route("/users/delete/<int:user_id>", methods=["POST"])
+@role_required("admin")
+def delete_user(user_id):
+    user = User.query.get_or_404(user_id)
+
+    if user.id == session.get("user_id"):
+        flash("不能删除当前登录账号", "error")
+        return redirect(url_for("list_users"))
+
+    if user.role == "admin":
+        admin_count = User.query.filter_by(role="admin").count()
+        if admin_count <= 1:
+            flash("系统至少需要保留一个管理员账号", "error")
+            return redirect(url_for("list_users"))
+
+    if Teacher.query.filter_by(user_id=user.id).first():
+        flash("该用户绑定了教师档案，请先删除教师档案", "error")
+        return redirect(url_for("list_users"))
+
+    if Student.query.filter_by(user_id=user.id).first():
+        flash("该用户绑定了学生档案，请先删除学生档案", "error")
+        return redirect(url_for("list_users"))
+
+    managed_classes = Class.query.filter_by(headteacher_id=user.id).count()
+    if managed_classes > 0:
+        flash("该用户仍担任班主任，请先调整班级班主任", "error")
+        return redirect(url_for("list_users"))
+
+    try:
+        log = OperationLog(
+            user_id=session["user_id"],
+            action="delete",
+            module="user",
+            record_id=user.id,
+            details=f"删除用户 {user.username}({user.full_name})"
+        )
+        db.session.add(log)
+        db.session.delete(user)
+        db.session.commit()
+
+        flash("删除成功", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"删除失败：{str(e)}", "danger")
+
+    return redirect(url_for("list_users"))
 
 
 # ======================== 批量导入 ========================
