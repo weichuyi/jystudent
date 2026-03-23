@@ -84,7 +84,7 @@
         {% endfor %}
         {% else %}
         <tr>
-          <td colspan="10">
+          <td colspan="{% if session.role == 'student' %}8{% else %}10{% endif %}">
             <div class="no-data">
               <i class="bi bi-journal-bookmark"></i>
               <p>暂无选课记录</p>
