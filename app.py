@@ -4,6 +4,7 @@ import shutil
 import platform
 import secrets
 import logging
+import re
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -308,6 +309,9 @@ def init_db():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    if "user_id" in session:
+        return redirect(url_for("dashboard"))
+
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
@@ -1372,6 +1376,7 @@ def edit_teacher(teacher_id):
         phone = request.form.get("phone", "").strip()
         email = request.form.get("email", "").strip()
         qualification = request.form.get("qualification", "").strip()
+        hire_date_str = request.form.get("hire_date", "").strip()
 
         if not teacher_no or not name:
             flash("教工号和姓名不能为空", "error")
@@ -1419,6 +1424,14 @@ def edit_teacher(teacher_id):
         teacher.phone = phone
         teacher.email = email
         teacher.qualification = qualification
+        if hire_date_str:
+            import datetime as _dt
+            try:
+                teacher.hire_date = _dt.datetime.strptime(hire_date_str, "%Y-%m-%d").date()
+            except ValueError:
+                pass
+        else:
+            teacher.hire_date = None
 
         try:
             if not linked_user:
@@ -1607,7 +1620,92 @@ def add_course():
             db.session.rollback()
             flash(f"添加失败：{str(e)}", "danger")
 
-    return render_template("courses/form.html", teachers=teachers, action="add")
+    return render_template("courses/form.html", teachers=teachers, action="add",
+                           course=type("C", (), {k: "" for k in ["course_no","course_name","credits","hours","max_capacity","semester","teacher_id","co_teachers","status"]})())
+
+
+@app.route("/courses/edit/<int:course_id>", methods=["GET", "POST"])
+@role_required("admin")
+def edit_course(course_id):
+    course = Course.query.get_or_404(course_id)
+    teachers = Teacher.query.all()
+
+    if request.method == "POST":
+        course_no = request.form.get("course_no", "").strip()
+        course_name = request.form.get("course_name", "").strip()
+        credits = request.form.get("credits", type=float)
+        hours = request.form.get("hours", type=int)
+        teacher_id = request.form.get("teacher_id", type=int)
+        co_teacher_ids = request.form.getlist("co_teacher_ids")
+        max_capacity = request.form.get("max_capacity", type=int) or course.max_capacity
+        semester = request.form.get("semester", "").strip()
+        status = request.form.get("status", "open").strip()
+
+        if not course_no or not course_name:
+            flash("课程编号和课程名称不能为空", "danger")
+            return render_template("courses/form.html", course=course, teachers=teachers, action="edit")
+
+        conflict = Course.query.filter(Course.course_no == course_no, Course.id != course.id).first()
+        if conflict:
+            flash("课程编号已存在", "danger")
+            return render_template("courses/form.html", course=course, teachers=teachers, action="edit")
+
+        try:
+            course.course_no = course_no
+            course.course_name = course_name
+            course.credits = credits
+            course.hours = hours
+            course.teacher_id = teacher_id
+            course.max_capacity = max_capacity if max_capacity and max_capacity > 0 else 50
+            course.semester = semester
+            course.status = status if status in ("open", "closed") else "open"
+
+            co_ids = []
+            for raw in co_teacher_ids:
+                try:
+                    tid = int(raw)
+                    if tid and tid != teacher_id:
+                        co_ids.append(tid)
+                except (TypeError, ValueError):
+                    pass
+            course.co_teachers = Teacher.query.filter(Teacher.id.in_(list(set(co_ids)))).all() if co_ids else []
+
+            db.session.add(OperationLog(
+                user_id=session["user_id"], action="update", module="course",
+                record_id=course.id, details=f"修改课程 {course_name}({course_no})"
+            ))
+            db.session.commit()
+            flash("修改课程成功", "success")
+            return redirect(url_for("list_courses"))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"修改失败：{str(e)}", "danger")
+
+    return render_template("courses/form.html", course=course, teachers=teachers, action="edit")
+
+
+@app.route("/courses/delete/<int:course_id>", methods=["POST"])
+@role_required("admin")
+def delete_course(course_id):
+    course = Course.query.get_or_404(course_id)
+    name = course.course_name
+
+    try:
+        if Enrollment.query.filter_by(course_id=course.id).count() > 0:
+            flash(f"课程【{name}】已有选课记录，无法删除", "danger")
+            return redirect(url_for("list_courses"))
+        db.session.add(OperationLog(
+            user_id=session["user_id"], action="delete", module="course",
+            record_id=course.id, details=f"删除课程 {name}({course.course_no})"
+        ))
+        db.session.delete(course)
+        db.session.commit()
+        flash(f"课程【{name}】已删除", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"删除失败：{str(e)}", "danger")
+
+    return redirect(url_for("list_courses"))
 
 
 # ======================== 选课管理 ========================
@@ -2209,10 +2307,38 @@ def _make_template_workbook(headers, example_row, sheet_title):
 @app.route("/students/import/template")
 @role_required("admin", "teacher")
 def student_import_template():
-    headers = ["学号*", "姓名*", "性别", "年龄", "班级编号", "手机", "邮箱", "专业", "身份证号",
-               "账号(空则用学号)", "密码(空则123456)"]
-    example = ["20240001", "张三", "男", 20, "C001", "13800138000",
-               "zhangsan@school.com", "计算机科学", "", "", ""]
+    headers = [
+        "学号*",
+        "姓名*",
+        "性别",
+        "年龄",
+        "班级名称(可选)",
+        "班级编号(可选)",
+        "手机",
+        "邮箱",
+        "专业",
+        "身份证号",
+        "入学日期(可选)",
+        "状态(可选)",
+        "账号(空则用学号)",
+        "密码(空则123456)",
+    ]
+    example = [
+        "20240001",
+        "张三",
+        "男",
+        20,
+        "软件工程1班",
+        "C001",
+        "13800138000",
+        "zhangsan@school.com",
+        "计算机科学",
+        "",
+        "2024-09-01",
+        "在读",
+        "",
+        "",
+    ]
     wb = _make_template_workbook(headers, example, "学生导入模板")
     buf = io.BytesIO()
     wb.save(buf)
@@ -2242,6 +2368,66 @@ def import_students():
         flash("文件解析失败，请使用正确的模板", "danger")
         return redirect(url_for("list_students"))
 
+    header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
+    if not header_row:
+        flash("导入文件缺少表头", "danger")
+        return redirect(url_for("list_students"))
+
+    def _normalize_header(value):
+        text = str(value or "").strip()
+        text = text.replace("*", "")
+        text = re.sub(r"[（(].*?[）)]", "", text)
+        text = text.replace(" ", "")
+        return text
+
+    normalized_headers = [_normalize_header(v) for v in header_row]
+    header_index = {name: idx for idx, name in enumerate(normalized_headers) if name}
+
+    header_aliases = {
+        "student_no": ["学号"],
+        "name": ["姓名"],
+        "gender": ["性别"],
+        "age": ["年龄"],
+        "class_name": ["班级名称", "班级名", "班级"],
+        "class_no": ["班级编号", "班级号"],
+        "phone": ["手机", "电话"],
+        "email": ["邮箱", "电子邮箱"],
+        "major": ["专业"],
+        "id_number": ["身份证号", "身份证"],
+        "enrollment_date": ["入学日期", "入学时间", "入学年月"],
+        "status": ["状态", "学籍状态"],
+        "username": ["账号", "用户名", "登录账号"],
+        "password": ["密码", "初始密码", "登录密码"],
+    }
+
+    def _find_col(*keys):
+        for key in keys:
+            idx = header_index.get(key)
+            if idx is not None:
+                return idx
+        return None
+
+    col_student_no = _find_col(*header_aliases["student_no"])
+    col_name = _find_col(*header_aliases["name"])
+    col_gender = _find_col(*header_aliases["gender"])
+    col_age = _find_col(*header_aliases["age"])
+    col_class_name = _find_col(*header_aliases["class_name"])
+    col_class_no = _find_col(*header_aliases["class_no"])
+    col_phone = _find_col(*header_aliases["phone"])
+    col_email = _find_col(*header_aliases["email"])
+    col_major = _find_col(*header_aliases["major"])
+    col_id_number = _find_col(*header_aliases["id_number"])
+    col_enrollment_date = _find_col(*header_aliases["enrollment_date"])
+    col_status = _find_col(*header_aliases["status"])
+    col_username = _find_col(*header_aliases["username"])
+    col_password = _find_col(*header_aliases["password"])
+
+    def _cell(row, col, default=""):
+        if col is None or col >= len(row):
+            return default
+        value = row[col]
+        return value if value is not None else default
+
     success, skipped, errors = 0, 0, []
 
     for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
@@ -2249,17 +2435,34 @@ def import_students():
             continue
 
         def _s(v): return str(v).strip() if v is not None else ""
-        student_no = _s(row[0])
-        name       = _s(row[1])
-        gender     = _s(row[2])
-        age_raw    = row[3]
-        class_no   = _s(row[4])
-        phone      = _s(row[5])
-        email      = _s(row[6])
-        major      = _s(row[7])
-        id_number  = _s(row[8])
-        username   = _s(row[9]) or student_no
-        password   = _s(row[10]) or "123456"
+
+        # 优先按表头匹配，兼容列顺序变化；若无匹配则回退旧模板固定列位。
+        student_no = _s(_cell(row, col_student_no, row[0] if len(row) > 0 else ""))
+        name = _s(_cell(row, col_name, row[1] if len(row) > 1 else ""))
+        gender = _s(_cell(row, col_gender, ""))
+        age_raw = _cell(row, col_age, None)
+        class_name = _s(_cell(row, col_class_name, ""))
+        class_no = _s(_cell(row, col_class_no, ""))
+        phone = _s(_cell(row, col_phone, ""))
+        email = _s(_cell(row, col_email, ""))
+        major = _s(_cell(row, col_major, ""))
+        id_number = _s(_cell(row, col_id_number, ""))
+        enrollment_date_raw = _cell(row, col_enrollment_date, "")
+        status = _s(_cell(row, col_status, ""))
+        username = _s(_cell(row, col_username, "")) or student_no
+        password = _s(_cell(row, col_password, "")) or "123456"
+
+        # 支持中文状态值
+        _status_map = {
+            "在读": "enrolled", "在校": "enrolled",
+            "休学": "leave", "请假": "leave",
+            "退学": "dropout", "退学了": "dropout",
+            "复学": "return", "返学": "return",
+        }
+        status = _status_map.get(status, status)
+        if status not in ["enrolled", "leave", "dropout", "return"]:
+            status = "enrolled"
+        status = status or "enrolled"
 
         if not student_no or not name:
             errors.append(f"第 {row_idx} 行：学号和姓名不能为空，已跳过")
@@ -2274,11 +2477,42 @@ def import_students():
             skipped += 1
             continue
 
-        class_obj = Class.query.filter_by(class_no=class_no).first() if class_no else None
+        class_obj = None
+        if class_no:
+            class_obj = Class.query.filter_by(class_no=class_no).first()
+            if not class_obj:
+                errors.append(f"第 {row_idx} 行：班级编号 {class_no} 不存在，已跳过")
+                skipped += 1
+                continue
+        elif class_name:
+            matched_classes = Class.query.filter_by(class_name=class_name).all()
+            if len(matched_classes) == 1:
+                class_obj = matched_classes[0]
+            elif len(matched_classes) > 1:
+                errors.append(f"第 {row_idx} 行：班级名称 {class_name} 匹配到多个班级，请改用班级编号")
+                skipped += 1
+                continue
+            else:
+                errors.append(f"第 {row_idx} 行：班级名称 {class_name} 不存在，已跳过")
+                skipped += 1
+                continue
         try:
             age = int(float(str(age_raw))) if age_raw not in (None, "") else None
         except (ValueError, TypeError):
             age = None
+
+        enrollment_date = None
+        if enrollment_date_raw not in (None, ""):
+            import datetime as _dt
+            if isinstance(enrollment_date_raw, (_dt.date, _dt.datetime)):
+                enrollment_date = enrollment_date_raw if isinstance(enrollment_date_raw, _dt.date) else enrollment_date_raw.date()
+            else:
+                for _fmt in ("%Y-%m-%d", "%Y/%m/%d", "%Y.%m.%d"):
+                    try:
+                        enrollment_date = _dt.datetime.strptime(str(enrollment_date_raw).strip(), _fmt).date()
+                        break
+                    except ValueError:
+                        pass
 
         try:
             user = User(username=username, full_name=name, role="student",
@@ -2293,7 +2527,8 @@ def import_students():
                 class_id=class_obj.id if class_obj else None,
                 phone=phone, email=email, major=major,
                 id_number=id_number or None,
-                status="enrolled"
+                enrollment_date=enrollment_date,
+                status=status
             )
             db.session.add(student)
             db.session.commit()
@@ -2322,9 +2557,9 @@ def import_students():
 @role_required("admin")
 def teacher_import_template():
     headers = ["教工号*", "姓名*", "性别", "部门", "手机", "邮箱", "学历",
-               "账号(空则用教工号)", "密码(空则123456)"]
+               "入职日期(可选)", "账号(空则用教工号)", "密码(空则123456)"]
     example = ["T20240001", "李四", "女", "计算机学院", "13900139000",
-               "lisi@school.com", "博士", "", ""]
+               "lisi@school.com", "博士", "2024-09-01", "", ""]
     wb = _make_template_workbook(headers, example, "教师导入模板")
     buf = io.BytesIO()
     wb.save(buf)
@@ -2354,6 +2589,58 @@ def import_teachers():
         flash("文件解析失败，请使用正确的模板", "danger")
         return redirect(url_for("list_teachers"))
 
+    header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
+    if not header_row:
+        flash("导入文件缺少表头", "danger")
+        return redirect(url_for("list_teachers"))
+
+    def _normalize_header(value):
+        text = str(value or "").strip()
+        text = text.replace("*", "")
+        text = re.sub(r"[\uff08(].*?[\uff09)]", "", text)
+        text = text.replace(" ", "")
+        return text
+
+    normalized_headers = [_normalize_header(v) for v in header_row]
+    header_index = {name: idx for idx, name in enumerate(normalized_headers) if name}
+
+    t_aliases = {
+        "teacher_no":    ["教工号", "教师工号", "工号"],
+        "name":          ["姓名", "教师姓名"],
+        "gender":        ["性别"],
+        "department":    ["部门", "院系", "学院"],
+        "phone":         ["手机", "电话"],
+        "email":         ["邮箱", "电子邮箱"],
+        "qualification": ["学历", "学位"],
+        "hire_date":     ["入职日期", "入职时间", "入职年月"],
+        "username":      ["账号", "用户名", "登录账号"],
+        "password":      ["密码", "初始密码"],
+    }
+
+    def _find_col(*keys):
+        for key in keys:
+            idx = header_index.get(key)
+            if idx is not None:
+                return idx
+        return None
+
+    def _cell(row, col, default=""):
+        if col is None or col >= len(row):
+            return default
+        v = row[col]
+        return v if v is not None else default
+
+    col_teacher_no    = _find_col(*t_aliases["teacher_no"])
+    col_name          = _find_col(*t_aliases["name"])
+    col_gender        = _find_col(*t_aliases["gender"])
+    col_department    = _find_col(*t_aliases["department"])
+    col_phone         = _find_col(*t_aliases["phone"])
+    col_email         = _find_col(*t_aliases["email"])
+    col_qualification = _find_col(*t_aliases["qualification"])
+    col_hire_date     = _find_col(*t_aliases["hire_date"])
+    col_username      = _find_col(*t_aliases["username"])
+    col_password      = _find_col(*t_aliases["password"])
+
     success, skipped, errors = 0, 0, []
 
     for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
@@ -2361,15 +2648,30 @@ def import_teachers():
             continue
 
         def _s(v): return str(v).strip() if v is not None else ""
-        teacher_no    = _s(row[0])
-        name          = _s(row[1])
-        gender        = _s(row[2])
-        department    = _s(row[3])
-        phone         = _s(row[4])
-        email         = _s(row[5])
-        qualification = _s(row[6])
-        username      = _s(row[7]) or teacher_no
-        password      = _s(row[8]) or "123456"
+        teacher_no    = _s(_cell(row, col_teacher_no,    row[0] if len(row) > 0 else ""))
+        name          = _s(_cell(row, col_name,          row[1] if len(row) > 1 else ""))
+        gender        = _s(_cell(row, col_gender,        ""))
+        department    = _s(_cell(row, col_department,    ""))
+        phone         = _s(_cell(row, col_phone,         ""))
+        email         = _s(_cell(row, col_email,         ""))
+        qualification = _s(_cell(row, col_qualification, ""))
+        hire_date_raw = _cell(row, col_hire_date, "")
+        username      = _s(_cell(row, col_username,      "")) or teacher_no
+        password      = _s(_cell(row, col_password,      "")) or "123456"
+
+        # 解析入职日期
+        hire_date = None
+        if hire_date_raw not in (None, ""):
+            import datetime as _dt
+            if isinstance(hire_date_raw, (_dt.date, _dt.datetime)):
+                hire_date = hire_date_raw if isinstance(hire_date_raw, _dt.date) else hire_date_raw.date()
+            else:
+                for _fmt in ("%Y-%m-%d", "%Y/%m/%d", "%Y.%m.%d"):
+                    try:
+                        hire_date = _dt.datetime.strptime(str(hire_date_raw).strip(), _fmt).date()
+                        break
+                    except ValueError:
+                        pass
 
         if not teacher_no or not name:
             errors.append(f"第 {row_idx} 行：教工号和姓名不能为空，已跳过")
@@ -2395,7 +2697,8 @@ def import_teachers():
                 teacher_no=teacher_no,
                 name=name, gender=gender,
                 department=department, phone=phone,
-                email=email, qualification=qualification
+                email=email, qualification=qualification,
+                hire_date=hire_date
             )
             db.session.add(teacher)
             db.session.commit()
@@ -2423,8 +2726,10 @@ def import_teachers():
 @app.route("/courses/import/template")
 @role_required("admin")
 def course_import_template():
-    headers = ["课程号*", "课程名称*", "学分", "学时", "任课教师工号", "容量", "学期", "状态(open/closed)"]
-    example = ["CS101", "程序设计基础", 3, 48, "T20240001", 60, "2026-1", "open"]
+    headers = ["课程号*", "课程名称*", "学分", "学时",
+               "任课教师工号(可选)", "任课教师姓名(可选)",
+               "容量", "学期", "状态(open/closed)"]
+    example = ["CS101", "程序设计基础", 3, 48, "T20240001", "", 60, "2026-1", "open"]
     wb = _make_template_workbook(headers, example, "课程导入模板")
     buf = io.BytesIO()
     wb.save(buf)
@@ -2455,20 +2760,73 @@ def import_courses():
         return redirect(url_for("list_courses"))
 
     success, skipped, errors = 0, 0, []
+
+    # 读取表头行，支持列顺序变化
+    header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
+    if not header_row:
+        flash("导入文件缺少表头", "danger")
+        return redirect(url_for("list_courses"))
+
+    def _normalize_header(value):
+        text = str(value or "").strip()
+        text = text.replace("*", "")
+        text = re.sub(r"[\uff08(].*?[\uff09)]", "", text)
+        text = text.replace(" ", "")
+        return text
+
+    normalized_headers = [_normalize_header(v) for v in header_row]
+    header_index = {name: idx for idx, name in enumerate(normalized_headers) if name}
+
+    c_aliases = {
+        "course_no":    ["课程号", "课程编号"],
+        "course_name":  ["课程名称", "课程名"],
+        "credits":      ["学分"],
+        "hours":        ["学时", "课时"],
+        "teacher_no":   ["任课教师工号", "教工号", "教师工号"],
+        "teacher_name": ["任课教师姓名", "教师姓名", "教师"],
+        "capacity":     ["容量", "最大容量", "人数上限"],
+        "semester":     ["学期"],
+        "status":       ["状态"],
+    }
+
+    def _find_col(*keys):
+        for key in keys:
+            idx = header_index.get(key)
+            if idx is not None:
+                return idx
+        return None
+
+    def _cell(row, col, default=""):
+        if col is None or col >= len(row):
+            return default
+        v = row[col]
+        return v if v is not None else default
+
+    col_course_no   = _find_col(*c_aliases["course_no"])
+    col_course_name = _find_col(*c_aliases["course_name"])
+    col_credits     = _find_col(*c_aliases["credits"])
+    col_hours       = _find_col(*c_aliases["hours"])
+    col_teacher_no  = _find_col(*c_aliases["teacher_no"])
+    col_teacher_nm  = _find_col(*c_aliases["teacher_name"])
+    col_capacity    = _find_col(*c_aliases["capacity"])
+    col_semester    = _find_col(*c_aliases["semester"])
+    col_status      = _find_col(*c_aliases["status"])
+
     for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
         if not any(v for v in row if v not in (None, "")):
             continue
 
         def _s(v): return str(v).strip() if v is not None else ""
 
-        course_no = _s(row[0])
-        course_name = _s(row[1])
-        credits_raw = row[2]
-        hours_raw = row[3]
-        teacher_no = _s(row[4])
-        capacity_raw = row[5]
-        semester = _s(row[6])
-        status = (_s(row[7]).lower() or "open")
+        course_no   = _s(_cell(row, col_course_no,   row[0] if len(row) > 0 else ""))
+        course_name = _s(_cell(row, col_course_name, row[1] if len(row) > 1 else ""))
+        credits_raw = _cell(row, col_credits, None)
+        hours_raw   = _cell(row, col_hours, None)
+        teacher_no  = _s(_cell(row, col_teacher_no, ""))
+        teacher_nm  = _s(_cell(row, col_teacher_nm, ""))
+        capacity_raw = _cell(row, col_capacity, None)
+        semester     = _s(_cell(row, col_semester, ""))
+        status       = (_s(_cell(row, col_status, "")).lower() or "open")
 
         if not course_no or not course_name:
             errors.append(f"第 {row_idx} 行：课程号和课程名称不能为空，已跳过")
@@ -2505,6 +2863,18 @@ def import_courses():
                 skipped += 1
                 continue
             teacher_id = teacher_obj.id
+        elif teacher_nm:
+            teacher_matches = Teacher.query.filter_by(name=teacher_nm).all()
+            if len(teacher_matches) == 1:
+                teacher_id = teacher_matches[0].id
+            elif len(teacher_matches) > 1:
+                errors.append(f"第 {row_idx} 行：教师姓名“{teacher_nm}”匹配到多位教师，请改用教工号")
+                skipped += 1
+                continue
+            else:
+                errors.append(f"第 {row_idx} 行：教师姓名“{teacher_nm}”不存在，已跳过")
+                skipped += 1
+                continue
 
         try:
             course = Course(
@@ -2711,16 +3081,16 @@ def admin_export_students():
     wb = Workbook()
     ws = wb.active
     ws.title = "学生信息"
-    ws.append(["学号", "姓名", "性别", "班级", "电话", "邮箱", "身份证号", "户籍地址", "现居住地", "入学日期", "状态", "备注"])
+    ws.append(["学号", "姓名", "性别", "年龄", "班级", "专业", "电话", "邮箱", "身份证号", "入学日期", "状态"])
 
     for s in Student.query.all():
         ws.append([
-            s.student_no, s.name, s.gender,
+            s.student_no, s.name, s.gender or "",
+            s.age if s.age is not None else "",
             s.class_obj.class_name if s.class_obj else "",
-            s.phone or "", s.email or "", s.id_number or "",
-            s.home_address or "", s.current_address or "",
+            s.major or "", s.phone or "", s.email or "", s.id_number or "",
             str(s.enrollment_date) if s.enrollment_date else "",
-            s.status or "", s.notes or ""
+            s.status or "",
         ])
 
     output = io.BytesIO()
@@ -2739,20 +3109,25 @@ def admin_export_scores():
     wb = Workbook()
     ws = wb.active
     ws.title = "成绩数据"
-    ws.append(["学号", "学生姓名", "课程名称", "成绩", "等级", "学期", "录入时间"])
+    ws.append(["学号", "学生姓名", "课程号", "课程名称", "成绩", "等级", "学期", "选课状态"])
 
-    for s in Score.query.join(Enrollment).join(Student).join(Course).all():
-        enrollment = Enrollment.query.get(s.enrollment_id)
-        student = enrollment.student if enrollment else None
-        course = enrollment.course if enrollment else None
+    rows = (
+        db.session.query(Enrollment, Student, Course)
+        .join(Student, Enrollment.student_id == Student.id)
+        .join(Course, Enrollment.course_id == Course.id)
+        .order_by(Student.student_no, Course.course_no)
+        .all()
+    )
+    for enrollment, student, course in rows:
         ws.append([
-            student.student_no if student else "",
-            student.name if student else "",
-            course.course_name if course else "",
-            s.score_value if s.score_value is not None else "",
-            s.grade or "",
-            course.semester if course else "",
-            str(s.recorded_at) if s.recorded_at else ""
+            student.student_no,
+            student.name,
+            course.course_no,
+            course.course_name,
+            enrollment.score if enrollment.score is not None else "",
+            enrollment.grade or "",
+            course.semester or "",
+            enrollment.status or "",
         ])
 
     output = io.BytesIO()
