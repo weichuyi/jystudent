@@ -16,6 +16,9 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     """用户登录"""
+    if 'user_id' in session:
+        return redirect(url_for('dashboard.index'))
+
     form = LoginForm()
     
     if form.validate_on_submit():
