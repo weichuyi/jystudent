@@ -34,7 +34,7 @@
     <form method="post" class="card">
       <div class="card-body">
         <div style="margin-bottom:1rem">
-          <label class="form-label">成绩 (0100) <span style="color:#ef4444">*</span></label>
+          <label class="form-label">成绩 (0-100) <span style="color:#ef4444">*</span></label>
           <input class="form-control" type="number" name="score"
                  value="{{ enrollment.score or '' }}" min="0" max="100" required autofocus
                  style="font-size:1.1rem;padding:.6rem .9rem">
@@ -43,7 +43,7 @@
           <label class="form-label">等级</label>
           <select class="form-select" name="grade">
             <option value="">自动计算</option>
-            <option value="A" {% if enrollment.grade == 'A' %}selected{% endif %}>A（90100）</option>
+            <option value="A" {% if enrollment.grade == 'A' %}selected{% endif %}>A（90-100）</option>
             <option value="B" {% if enrollment.grade == 'B' %}selected{% endif %}>B（8089）</option>
             <option value="C" {% if enrollment.grade == 'C' %}selected{% endif %}>C（7079）</option>
             <option value="D" {% if enrollment.grade == 'D' %}selected{% endif %}>D（6069）</option>
