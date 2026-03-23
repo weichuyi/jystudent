@@ -17,32 +17,40 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">课程编号 *</label>
-                            <input class="form-control" type="text" name="course_no" required>
+                            <input class="form-control" type="text" name="course_no" value="{{ course.course_no or '' }}" required>
                         </div>
 
                         <div class="col-md-6">
                             <label class="form-label">课程名称 *</label>
-                            <input class="form-control" type="text" name="course_name" required>
+                            <input class="form-control" type="text" name="course_name" value="{{ course.course_name or '' }}" required>
                         </div>
 
                         <div class="col-md-3">
                             <label class="form-label">学分</label>
-                            <input class="form-control" type="number" name="credits" step="0.5" min="0">
+                            <input class="form-control" type="number" name="credits" step="0.5" min="0" value="{{ course.credits or '' }}">
                         </div>
 
                         <div class="col-md-3">
                             <label class="form-label">学时</label>
-                            <input class="form-control" type="number" name="hours" min="0">
+                            <input class="form-control" type="number" name="hours" min="0" value="{{ course.hours or '' }}">
                         </div>
 
                         <div class="col-md-6">
                             <label class="form-label">容量</label>
-                            <input class="form-control" type="number" name="max_capacity" value="50" min="1">
+                            <input class="form-control" type="number" name="max_capacity" value="{{ course.max_capacity or 50 }}" min="1">
                         </div>
 
                         <div class="col-md-6">
                             <label class="form-label">学期</label>
-                            <input class="form-control" type="text" name="semester" placeholder="如 2024-1">
+                            <input class="form-control" type="text" name="semester" placeholder="如 2024-1" value="{{ course.semester or '' }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">状态</label>
+                            <select class="form-select" name="status">
+                                <option value="open"  {% if (course.status or 'open') == 'open'   %}selected{% endif %}>开放选课</option>
+                                <option value="closed" {% if course.status == 'closed' %}selected{% endif %}>已关闭</option>
+                            </select>
                         </div>
 
                         <div class="col-12">
@@ -50,7 +58,7 @@
                             <select class="form-select" name="teacher_id">
                                 <option value="">请选择教师</option>
                                 {% for t in teachers %}
-                                <option value="{{ t.id }}">{{ t.name }}</option>
+                                <option value="{{ t.id }}" {% if course.teacher_id == t.id %}selected{% endif %}>{{ t.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -59,7 +67,7 @@
                             <label class="form-label">协同教师（可多选）</label>
                             <select class="form-select" name="co_teacher_ids" multiple size="5">
                                 {% for t in teachers %}
-                                <option value="{{ t.id }}">{{ t.name }}（{{ t.teacher_no }}）</option>
+                                <option value="{{ t.id }}" {% if course.co_teachers is defined and t in course.co_teachers %}selected{% endif %}>{{ t.name }}（{{ t.teacher_no }}）</option>
                                 {% endfor %}
                             </select>
                             <small class="text-muted">按住 Ctrl 可多选；无需协同时可不选。</small>
