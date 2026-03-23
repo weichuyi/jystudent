@@ -728,6 +728,10 @@ body {
   gap: .5rem;
 }
 
+/* 确保 alert 内图标不会被压缩，文字块自动换行 */
+.alert > i { flex-shrink: 0; margin-top: .1em; }
+.alert > span { flex: 1; line-height: 1.6; }
+
 .alert-success { background: #f0fdf4; border-color: var(--success); color: #065f46; }
 .alert-danger  { background: #fef2f2; border-color: var(--danger);  color: #991b1b; }
 .alert-warning { background: #fffbeb; border-color: var(--warning); color: #92400e; }
