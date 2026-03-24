@@ -10,7 +10,9 @@
   {% block extra_css %}{% endblock %}
 </head>
 <body>
-{% if 'user_id' in session %}
+{% set auth_endpoints = ['login', 'forgot_password', 'reset_password_with_key', 'auth.login', 'auth.forgot_password', 'auth.reset_password_with_key'] %}
+{% set show_app_shell = 'user_id' in session and (request.endpoint or '') not in auth_endpoints %}
+{% if show_app_shell %}
 <!-- Mobile overlay -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
@@ -89,10 +91,6 @@
     {% if session.role == 'admin' %}
     <div class="sidebar-section">
       <div class="sidebar-section-label">系统管理</div>
-      <a class="sidebar-link {% if (request.endpoint or '').startswith('admin_') %}active{% endif %}"
-         href="{{ url_for('admin_index') }}">
-        <i class="bi bi-gear-fill nav-icon"></i> 管理中心
-      </a>
       <a class="sidebar-link {% if 'user' in (request.endpoint or '') %}active{% endif %}"
          href="{{ url_for('list_users') }}">
         <i class="bi bi-shield-fill-check nav-icon"></i> 用户管理
@@ -130,11 +128,24 @@
     <a href="{{ url_for('change_password') }}" class="topbar-btn d-none d-md-inline-flex">
       <i class="bi bi-key"></i> 修改密码
     </a>
-    <a href="{{ url_for('logout') }}" class="topbar-btn btn-exit">
+    <a href="{{ url_for('logout') }}" class="topbar-btn btn-exit js-logout-trigger" aria-label="退出登录">
       <i class="bi bi-box-arrow-right"></i> 退出
     </a>
   </div>
 </header>
+
+<div class="logout-confirm" id="logoutConfirmModal" hidden>
+  <div class="logout-confirm-backdrop" data-action="cancel"></div>
+  <div class="logout-confirm-card" role="dialog" aria-modal="true" aria-labelledby="logoutConfirmTitle">
+    <div class="logout-confirm-icon"><i class="bi bi-box-arrow-right"></i></div>
+    <h3 id="logoutConfirmTitle">确认退出登录？</h3>
+    <p>退出后将返回登录页面。</p>
+    <div class="logout-confirm-actions">
+      <button type="button" class="logout-confirm-btn btn-cancel" data-action="cancel">取消</button>
+      <button type="button" class="logout-confirm-btn btn-confirm" data-action="confirm">确定退出</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== MAIN ===== -->
 <main class="main-content">
@@ -163,7 +174,7 @@
 
 {% block content %}{% endblock %}
 
-{% if 'user_id' in session %}
+{% if show_app_shell %}
   </div>
 </main>
 
@@ -273,6 +284,56 @@ function closeSidebar() {
       popup.classList.add('closing');
       setTimeout(function () { popup.remove(); }, 180);
     }, 5200);
+  });
+})();
+
+// Custom logout confirmation dialog.
+(function () {
+  const trigger = document.querySelector('.js-logout-trigger');
+  const modal = document.getElementById('logoutConfirmModal');
+  if (!trigger || !modal) return;
+
+  const cancelControls = modal.querySelectorAll('[data-action="cancel"]');
+  const confirmBtn = modal.querySelector('[data-action="confirm"]');
+  let lastFocused = null;
+
+  function openModal(event) {
+    if (event) event.preventDefault();
+    lastFocused = document.activeElement;
+    modal.hidden = false;
+    requestAnimationFrame(function () {
+      modal.classList.add('open');
+    });
+  }
+
+  function closeModal() {
+    modal.classList.remove('open');
+    setTimeout(function () {
+      modal.hidden = true;
+      if (lastFocused && typeof lastFocused.focus === 'function') {
+        lastFocused.focus();
+      }
+    }, 180);
+  }
+
+  trigger.addEventListener('click', openModal);
+
+  cancelControls.forEach(function (el) {
+    el.addEventListener('click', closeModal);
+  });
+
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', function () {
+      window.location.href = trigger.getAttribute('href');
+    });
+  }
+
+  document.addEventListener('keydown', function (event) {
+    if (modal.hidden) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeModal();
+    }
   });
 })();
 </script>

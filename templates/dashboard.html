@@ -97,4 +97,18 @@
     </div>
   </div>
 </div>
+
+{% if user.role == 'admin' %}
+<div class="card admin-center-card mt-4">
+  <div class="card-body admin-center-row">
+    <div>
+      <div class="admin-center-title">系统管理中心</div>
+      <div class="admin-center-subtitle">管理员专用入口：用户、数据、日志与系统维护</div>
+    </div>
+    <a href="{{ url_for('admin_index') }}" class="btn btn-primary admin-center-btn">
+      <i class="bi bi-gear-wide-connected"></i> 进入管理中心
+    </a>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

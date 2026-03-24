@@ -15,7 +15,7 @@
       {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-        <div class="alert alert-{{ 'danger' if category == 'danger' else category }}" style="margin-bottom:1rem">
+        <div class="alert login-alert alert-{{ 'danger' if category == 'danger' else category }}">
           <i class="bi bi-exclamation-circle-fill"></i> {{ message }}
         </div>
         {% endfor %}
@@ -23,7 +23,7 @@
       {% endwith %}
 
       <form method="post" action="{{ url_for('login') }}">
-        <div style="margin-bottom:1rem">
+        <div class="login-field">
           <label class="form-label">用户名</label>
           <div class="input-group">
             <span class="input-group-text border-end-0">
@@ -34,7 +34,7 @@
                    style="border-left:none">
           </div>
         </div>
-        <div style="margin-bottom:1.5rem">
+        <div class="login-field login-field-password">
           <label class="form-label">密码</label>
           <div class="input-group">
             <span class="input-group-text border-end-0">
@@ -45,17 +45,17 @@
                    style="border-left:none">
           </div>
         </div>
-        <button class="btn btn-primary w-100" type="submit" style="padding:.6rem;font-size:.9rem;justify-content:center">
+        <button class="btn btn-primary w-100 login-submit" type="submit">
           <i class="bi bi-box-arrow-in-right"></i> 登 录
         </button>
       </form>
 
-      <div class="d-flex" style="margin-top:.8rem;gap:.5rem">
-        <a href="{{ url_for('forgot_password') }}" class="btn btn-outline-secondary" style="justify-content:center;flex:1">
+      <div class="d-flex login-actions">
+        <a href="{{ url_for('forgot_password') }}" class="btn btn-outline-secondary login-link-btn">
           <i class="bi bi-question-circle"></i> 忘记密码
         </a>
-        <a href="{{ url_for('reset_password_with_key') }}" class="btn btn-outline-secondary" style="justify-content:center;flex:1">
-          <i class="bi bi-key"></i> 使用 Key 重置密码
+        <a href="{{ url_for('reset_password_with_key') }}" class="btn btn-outline-secondary login-link-btn">
+          <i class="bi bi-key"></i> 重置密码
         </a>
       </div>
 

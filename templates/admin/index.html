@@ -57,7 +57,7 @@
         <div class="stat-val">{{ "%.1f"|format(stats.log_sizes.get('error.log', 0)) }} <span class="stat-unit">KB</span></div>
         <div class="stat-label">错误日志</div>
       </div>
-      <a href="{{ url_for('admin_system_info') }}" class="stat-link">详情 <i class="bi bi-arrow-right"></i></a>
+      <a href="{{ url_for('list_ops_log') }}" class="stat-link">详情 <i class="bi bi-arrow-right"></i></a>
     </div>
 
   </div>

@@ -3187,15 +3187,12 @@ def admin_cleanup_logs():
                 except Exception:
                     failed += 1
 
-    db.session.add(OperationLog(
-        user_id=session["user_id"], action="cleanup_logs", module="admin",
-        details=f"清理日志: 清空 {cleaned} 个文件, 失败 {failed} 个"
-    ))
+    deleted_ops = OperationLog.query.delete(synchronize_session=False)
     db.session.commit()
     if failed:
-        flash(f"日志清理完成：清空 {cleaned} 个文件，{failed} 个文件清理失败", "warning")
+        flash(f"日志清理完成：清空 {cleaned} 个文件，{failed} 个文件清理失败；操作日志已删除 {deleted_ops} 条", "warning")
     else:
-        flash(f"日志清理完成：已清空 {cleaned} 个日志文件", "success")
+        flash(f"日志清理完成：已清空 {cleaned} 个日志文件；操作日志已删除 {deleted_ops} 条", "success")
     return redirect(url_for("admin_index"))
 
 
