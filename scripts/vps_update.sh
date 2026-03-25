@@ -7,7 +7,7 @@ set -euo pipefail
 #   PROJECT_DIR=/opt/jystudent
 #   REPO_URL=https://github.com/weichuyi/jystudent.git
 #   VENV_PATH=/opt/jystudent/.venv
-#   APP_MODULE=app:app
+#   APP_MODULE=wsgi:app
 #   SERVICE_NAME=jystudent
 #   BRANCH=main
 #   DB_FILE=instance/students.db
@@ -18,7 +18,7 @@ set -euo pipefail
 PROJECT_DIR="${PROJECT_DIR:-/opt/jystudent}"
 REPO_URL="${REPO_URL:-https://github.com/weichuyi/jystudent.git}"
 VENV_PATH="${VENV_PATH:-$PROJECT_DIR/.venv}"
-APP_MODULE="${APP_MODULE:-app:app}"
+APP_MODULE="${APP_MODULE:-wsgi:app}"
 SERVICE_NAME="${SERVICE_NAME:-jystudent}"
 BRANCH="${BRANCH:-main}"
 DB_FILE="${DB_FILE:-instance/students.db}"
