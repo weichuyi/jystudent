@@ -78,6 +78,12 @@ log "Sync code from origin/$BRANCH"
 git fetch origin "$BRANCH"
 git pull --rebase origin "$BRANCH"
 
+# .venv 可能因自动 stash（-u）被临时收起，这里再次兜底创建。
+if [ ! -x "$VENV_PATH/bin/python" ]; then
+  log "Virtual environment missing after sync, recreating: $VENV_PATH"
+  python3 -m venv "$VENV_PATH"
+fi
+
 if [ -n "${BACKUP_PATH:-}" ] && [ -f "$BACKUP_PATH" ]; then
   mkdir -p "$(dirname "$DB_FILE")"
   cp -a "$BACKUP_PATH" "$DB_FILE"
