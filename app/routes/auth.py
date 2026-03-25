@@ -33,6 +33,7 @@ def login():
             session['username'] = user.username
             session['role'] = user.role
             session['full_name'] = user.full_name
+            session['avatar'] = user.avatar
             session.permanent = True
             
             # 记录日志

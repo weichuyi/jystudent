@@ -12,7 +12,7 @@
     <div class="row justify-content-center">
         <div class="col-md-6">
 
-            <form method="post" class="card shadow-sm border-0">
+            <form method="post" enctype="multipart/form-data" class="card shadow-sm border-0">
                 <div class="card-body">
                     <div class="mb-3">
                         <label class="form-label">用户名</label>
@@ -52,6 +52,17 @@
                     <div class="mb-3">
                         <label class="form-label">电话</label>
                         <input class="form-control" type="text" name="phone" value="{{ user.phone if user else '' }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">头像</label>
+                        {% if action == 'edit' and user.avatar %}
+                        <div class="mb-2">
+                            <img src="{{ url_for('static', filename='avatars/' ~ user.avatar) }}" alt="avatar" style="width:72px;height:72px;border-radius:8px;object-fit:cover;border:1px solid #e2e8f0">
+                        </div>
+                        {% endif %}
+                        <input class="form-control" type="file" name="avatar" accept="image/*">
+                        <small class="text-muted">支持 png/jpg/jpeg/gif，最大 5MB。</small>
                     </div>
 
                     {% if action == 'edit' %}

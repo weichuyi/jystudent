@@ -263,7 +263,7 @@ body {
 }
 
 .sidebar-footer {
-  padding: .56rem .55rem;
+  padding: .75rem .6rem;
   border-top: 1px solid rgba(255,255,255,.1);
   flex-shrink: 0;
 }
@@ -271,23 +271,25 @@ body {
 .sidebar-user {
   display: flex;
   align-items: center;
-  gap: .52rem;
-  padding: .42rem .5rem;
+  gap: .8rem;
+  padding: .5rem .6rem;
   border-radius: var(--radius-sm);
-  margin-top: .35rem;
-  background: rgba(255,255,255,.08);
+  margin-top: .25rem;
+  background: rgba(255,255,255,.06);
 }
 
 .sidebar-user-avatar {
-  width: 30px; height: 30px;
+  width: 44px; height: 44px;
   background: linear-gradient(135deg, #818cf8, #a78bfa);
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
-  font-size: .78rem;
+  font-size: .95rem;
   font-weight: 700;
   color: #fff;
   flex-shrink: 0;
+  overflow: hidden;
 }
+.sidebar-user-avatar img { width:100%; height:100%; object-fit:cover; display:block }
 
 .sidebar-user-info .u-name {
   font-size: .77rem;

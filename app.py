@@ -11,12 +11,26 @@ from functools import wraps
 import io
 
 from flask import Flask, flash, has_request_context, redirect, render_template, request, send_file, session, url_for
-from werkzeug.middleware.proxy_fix import ProxyFix
+try:
+    from werkzeug.middleware.proxy_fix import ProxyFix
+except Exception:
+    try:
+        # older werkzeug or some frozen builds
+        from werkzeug.contrib.fixers import ProxyFix
+    except Exception:
+        # fallback: provide a no-op ProxyFix to avoid crash in frozen exe
+        def ProxyFix(app, **kwargs):
+            return app
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
 from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
+try:
+    from PIL import Image
+except Exception:
+    Image = None
 
 # 打包后 importlib 动态加载时 __name__ 不是 __main__，
 # Flask 据此推算 root_path 指向错误目录，找不到 templates/static。
@@ -35,6 +49,16 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 app.config["SECRET_KEY"] = "student-system-secret-key-2026"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///students.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+# Avatar upload config
+app.config['AVATAR_UPLOAD_FOLDER'] = os.path.join(_app_root, 'static', 'avatars')
+app.config['ALLOWED_IMAGE_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit for uploads
+
+# ensure avatar folder exists
+try:
+    os.makedirs(app.config['AVATAR_UPLOAD_FOLDER'], exist_ok=True)
+except OSError:
+    pass
 
 # 将运行时异常落盘，便于定位打包环境中的 500 错误。
 try:
@@ -84,6 +108,7 @@ class User(db.Model):
     role = db.Column(db.String(20), nullable=False, default="student")  # admin, teacher, student
     email = db.Column(db.String(100))
     phone = db.Column(db.String(20))
+    avatar = db.Column(db.String(255))
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -93,6 +118,27 @@ class User(db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password, password)
+
+
+def _allowed_image_file(filename):
+    if not filename or '.' not in filename:
+        return False
+    ext = filename.rsplit('.', 1)[1].lower()
+    return ext in app.config.get('ALLOWED_IMAGE_EXTENSIONS', set())
+
+
+def _process_and_optimize_image(path, size=(256, 256), quality=85):
+    """Resize and optimize image in place. Requires Pillow."""
+    if Image is None:
+        return
+    try:
+        with Image.open(path) as img:
+            img = img.convert('RGBA') if img.mode in ('P', 'LA') else img.convert('RGB')
+            img.thumbnail(size, Image.LANCZOS)
+            # save optimized
+            img.save(path, optimize=True, quality=quality)
+    except Exception:
+        app.logger.exception('处理头像图片时出错')
 
 
 class Class(db.Model):
@@ -2229,6 +2275,29 @@ def add_user():
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
+            # ensure session avatar set for newly created user if current user is creating own
+            if session.get('user_id') == user.id:
+                session['avatar'] = user.avatar
+
+            # handle avatar upload (optional)
+            avatar_file = request.files.get('avatar')
+            if avatar_file and avatar_file.filename:
+                try:
+                    if _allowed_image_file(avatar_file.filename):
+                        ext = avatar_file.filename.rsplit('.', 1)[1].lower()
+                        avatar_filename = f"user_{user.id}_{int(datetime.utcnow().timestamp())}.{ext}"
+                        avatar_path = os.path.join(app.config['AVATAR_UPLOAD_FOLDER'], avatar_filename)
+                        avatar_file.save(avatar_path)
+                        # process image (resize/optimize)
+                        try:
+                            _process_and_optimize_image(avatar_path, size=(256,256), quality=85)
+                        except Exception:
+                            app.logger.exception('头像处理失败')
+                        user.avatar = avatar_filename
+                        db.session.commit()
+                except Exception:
+                    # 不应因头像保存失败而阻止用户创建
+                    app.logger.exception("保存用户头像时出错")
 
             log = OperationLog(
                 user_id=session["user_id"],
@@ -2279,6 +2348,32 @@ def edit_user(user_id):
             user.set_password(new_password)
 
         try:
+            # handle avatar upload (optional)
+            avatar_file = request.files.get('avatar')
+            if avatar_file and avatar_file.filename:
+                try:
+                    if _allowed_image_file(avatar_file.filename):
+                        ext = avatar_file.filename.rsplit('.', 1)[1].lower()
+                        avatar_filename = f"user_{user.id}_{int(datetime.utcnow().timestamp())}.{ext}"
+                        avatar_path = os.path.join(app.config['AVATAR_UPLOAD_FOLDER'], avatar_filename)
+                        avatar_file.save(avatar_path)
+                        # process image (resize/optimize)
+                        try:
+                            _process_and_optimize_image(avatar_path, size=(256,256), quality=85)
+                        except Exception:
+                            app.logger.exception('头像处理失败')
+                        # remove old avatar file if exists
+                        try:
+                            if user.avatar:
+                                old_path = os.path.join(app.config['AVATAR_UPLOAD_FOLDER'], user.avatar)
+                                if os.path.exists(old_path):
+                                    os.remove(old_path)
+                        except Exception:
+                            app.logger.exception("删除旧头像失败")
+                        user.avatar = avatar_filename
+                except Exception:
+                    app.logger.exception("保存用户头像时出错")
+
             db.session.commit()
             log = OperationLog(
                 user_id=session["user_id"],
@@ -2344,6 +2439,49 @@ def delete_user(user_id):
         flash(f"删除失败：{str(e)}", "danger")
 
     return redirect(url_for("list_users"))
+
+
+# ========== 个人头像上传 ===========
+@app.route('/profile/avatar', methods=['POST'])
+@login_required
+def upload_profile_avatar():
+    user_id = session.get('user_id')
+    user = User.query.get_or_404(user_id)
+
+    file = request.files.get('avatar')
+    if not file or not file.filename:
+        flash('未选择头像文件', 'warning')
+        return redirect(request.referrer or url_for('dashboard'))
+
+    if not _allowed_image_file(file.filename):
+        flash('只支持 png/jpg/jpeg/gif 格式的图片', 'danger')
+        return redirect(request.referrer or url_for('dashboard'))
+
+    try:
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        avatar_filename = f"user_{user.id}_{int(datetime.utcnow().timestamp())}.{ext}"
+        avatar_path = os.path.join(app.config['AVATAR_UPLOAD_FOLDER'], avatar_filename)
+        file.save(avatar_path)
+
+        # 删除旧头像
+        try:
+            if user.avatar:
+                old_path = os.path.join(app.config['AVATAR_UPLOAD_FOLDER'], user.avatar)
+                if os.path.exists(old_path):
+                    os.remove(old_path)
+        except Exception:
+            app.logger.exception('删除旧头像失败')
+
+        user.avatar = avatar_filename
+        db.session.commit()
+        session['avatar'] = user.avatar
+        flash('头像已更新', 'success')
+    except Exception as e:
+        app.logger.exception('保存头像时出错')
+        db.session.rollback()
+        flash(f'头像上传失败: {str(e)}', 'danger')
+
+    return redirect(request.referrer or url_for('dashboard'))
 
 
 # ======================== 批量导入 ========================

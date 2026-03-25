@@ -1,0 +1,64 @@
+2026-03-25 21:52:19,690 [ERROR] Exception on /dashboard [GET]
+Traceback (most recent call last):
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\flask\app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\weichuyi\Desktop\jystudent\app.py", line 344, in decorated_function
+    return f(*args, **kwargs)
+  File "C:\Users\weichuyi\Desktop\jystudent\app.py", line 625, in dashboard
+    return render_template("dashboard.html", user=user, stats=stats)
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\weichuyi\Desktop\jystudent\templates\dashboard.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\weichuyi\Desktop\jystudent\templates\base.html", line 111, in template
+    {% set _ = (user := ( (session.get('user_id') and ( (session.get('user_id') and (None)) ) ))) %}
+    ^^^^^^^^^^^^^^^
+jinja2.exceptions.TemplateSyntaxError: expected token ')', got ':'
+2026-03-25 21:52:37,494 [ERROR] Exception on /dashboard [GET]
+Traceback (most recent call last):
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\flask\app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\weichuyi\Desktop\jystudent\app.py", line 344, in decorated_function
+    return f(*args, **kwargs)
+  File "C:\Users\weichuyi\Desktop\jystudent\app.py", line 625, in dashboard
+    return render_template("dashboard.html", user=user, stats=stats)
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\weichuyi\Desktop\jystudent\templates\dashboard.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "C:\Users\weichuyi\Desktop\jystudent\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\weichuyi\Desktop\jystudent\templates\base.html", line 111, in template
+    {% set _ = (user := ( (session.get('user_id') and ( (session.get('user_id') and (None)) ) ))) %}
+    ^^^^^^^^^^^^^^^
+jinja2.exceptions.TemplateSyntaxError: expected token ')', got ':'

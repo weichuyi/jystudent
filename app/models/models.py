@@ -16,6 +16,7 @@ class User(BaseModel):
     role = db.Column(db.String(20), nullable=False, default="student")  # admin, teacher, student
     email = db.Column(db.String(100), unique=True)
     phone = db.Column(db.String(20))
+    avatar = db.Column(db.String(255))
     is_active = db.Column(db.Boolean, default=True, index=True)
     
     # 2FA相关
