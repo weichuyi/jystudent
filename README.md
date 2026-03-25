@@ -2,231 +2,104 @@
 
 一个基于 Flask + SQLAlchemy + Jinja2 的校园管理系统，覆盖学生、教师、班级、课程、选课、成绩、用户、备份、日志等核心场景。
 
-当前仓库同时保留了两套启动入口，但日常开发与最新业务功能以根目录的 app.py 为准。最近新增或调整的能力，如教师/学生账号联动、忘记密码 Key 重置、管理员代学生选课、系统信息页“跑路”恢复出厂、教师按任课课程管理成绩等，均已集成在 app.py 版本中。
+当前仓库同时保留了两套启动入口，但日常开发与最新业务功能以根目录的 `app.py` 为准。
 
-## 项目定位
+## 快速概览
 
 - 目标用户：学校管理员、教师、学生
-- 技术栈：Flask 3、SQLAlchemy 2、SQLite、Bootstrap 5、Jinja2、OpenPyXL
-- 数据库文件：instance/students.db
-- 当前主运行端口：5001（app.py）
+- 技术栈：Flask、SQLAlchemy、SQLite、Bootstrap、Jinja2、openpyxl
+- 数据库文件：`instance/students.db`
+- 当前主运行端口：5001（由 `app.py` 启动）
 
-## 当前主要功能
+## 快速开始
 
-### 1. 认证与账户
-
-- 管理员、教师、学生三类角色登录
-- 修改密码
-- 忘记密码申请 Key
-- 使用账号 + Key 重置密码
-- 教师/学生档案与系统账户自动联动
-
-### 2. 学生管理
-
-- 学生信息增删改查
-- 按学号、姓名、班级、状态筛选
-- 学籍状态维护：在读、休学、退学
-- 新增学生时自动创建学生账号
-- 删除学生时同步删除对应账号
-
-### 3. 教师管理
-
-- 教师信息增删改查
-- 新增教师时自动创建教师账号
-- 编辑教师时同步更新绑定账号
-- 删除教师时同步删除或禁用对应账号
-
-### 4. 班级管理
-
-- 班级新增、编辑、删除
-- 辅导员绑定
-- 教师只有在担任辅导员时才可进行班级相关管理
-
-### 5. 课程管理
-
-- 课程新增
-- 课程批量导入
-- 主讲教师 + 协同教师
-- 学分、学时、容量、学期管理
-- 管理员可维护，教师只读自己任课课程
-
-### 6. 选课管理
-
-- 学生自助选课
-- 管理员代学生选课
-- 防止重复选课
-- 容量控制
-- 已退课记录可重新选回
-- 学生不可退课，管理员/辅导员教师可处理选课记录
-
-### 7. 成绩管理
-
-- 管理员和任课教师录入成绩
-- 手动录入成绩时，可自动补建选课记录
-- 教师仅可管理自己任课课程的成绩
-- 学生查看个人成绩
-
-### 8. 系统管理
-
-- 用户管理
-- 操作日志
-- 重置 Key 管理
-- 数据导出
-- 数据库备份、恢复、下载、删除
-- 系统信息页查看环境信息
-- 一键“跑路”恢复出厂设置，仅保留管理员账户
-
-## 权限规则
-
-### 管理员
-
-- 可访问全部模块
-- 可管理用户、课程、班级、教师、学生、日志、备份、系统信息
-- 可代学生选课
-- 可执行恢复出厂设置
-
-### 教师
-
-- 普通任课教师：只能查看自己任课课程，并录入自己任课课程成绩
-- 辅导员教师：额外拥有班级、学生、选课记录相关管理能力
-- 任课教师不等于辅导员，辅导员也不一定带课
-
-### 学生
-
-- 查看个人资料
-- 进入课程选择页面进行选课
-- 查看个人选课记录
-- 查看个人成绩
-- 不允许自行退课
-
-## 启动方式
-
-### 推荐：运行当前主版本
-
-```powershell
-.\.venv\Scripts\python app.py
-```
-
-访问地址：
-
-```text
-http://127.0.0.1:5001
-```
-
-默认管理员账号：
-
-- 用户名：admin
-- 密码：weichuy1
-
-### 其他入口说明
-
-- main.py：仓库中保留的模块化入口，端口为 5000
-- run.py：浏览器启动辅助脚本，端口为 5000
-
-如果你的目标是使用当前最新业务功能，优先运行 app.py。
-
-## 环境准备
-
-### 1. 创建虚拟环境
+1. 创建并激活虚拟环境：
 
 ```powershell
 python -m venv .venv
-```
-
-### 2. 激活虚拟环境
-
-```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-### 3. 安装依赖
+2. 安装依赖：
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-## 项目结构
+3. 运行（开发/测试）：
+
+```powershell
+python app.py
+```
+
+访问应用：
+
+```text
+http://127.0.0.1:5001
+```
+
+默认管理员：`admin / weichuy1`
+
+## 打包为 Windows 可执行文件（exe）
+
+仓库自带打包脚本 `build_exe.py`，最简单的打包方式是运行：
+
+```powershell
+python build_exe.py
+```
+
+脚本内部使用 PyInstaller 生成单文件 exe，等效的 PyInstaller 命令（Windows 下 pathsep=`;`）为：
+
+```powershell
+python -m PyInstaller --onefile --windowed \
+	--add-data templates;templates \
+	--add-data static;static \
+	--add-data app.py;. \
+	--collect-all openpyxl \
+	--collect-submodules flask \
+	--collect-submodules flask_sqlalchemy \
+	--hidden-import flask_sqlalchemy \
+	--hidden-import openpyxl \
+	--name SmartCampusPlatform_Fixed \
+	--distpath dist --workpath build --specpath . run.py
+```
+
+完成后可在 `dist/` 中找到 `SmartCampusPlatform_Fixed.exe`。
+
+## 项目结构（简要）
 
 ```text
 jystudent/
-├── app.py                     # 当前主版本入口
-├── main.py                    # 保留的模块化入口
-├── run.py                     # 浏览器启动辅助入口
-├── requirements.txt           # Python 依赖
-├── instance/                  # SQLite 数据库目录
-├── static/                    # 静态资源
-├── templates/                 # 页面模板
-├── app/                       # 保留的模块化代码结构
-├── backups/                   # 备份目录
-├── logs/                      # 日志目录
-└── release/                   # 打包输出
+├── app.py
+├── main.py
+├── run.py
+├── build_exe.py
+├── requirements.txt
+├── instance/
+├── static/
+├── templates/
+├── app/
+│   ├── forms/
+│   ├── models/
+│   ├── routes/
+│   └── services/
+├── backups/
+├── logs/
+└── release/
 ```
 
-## 常见说明
+## 常用说明与注意事项
 
-### 数据库初始化
+- 启动时若数据库不存在，`app.py` 会自动初始化并确保默认管理员存在。
+- 打包前请先确保依赖已安装且项目能在开发环境正常启动。
+- “跑路”功能位于：管理中心 -> 系统信息，执行后会删除业务数据，仅保留管理员账户，务必先备份。
 
-- app.py 启动时会自动执行 init_db()
-- 若数据库不存在，会自动创建表并确保默认管理员存在
+## 文档与手册
 
-### 关于“跑路”功能
-
-- 页面位置：管理中心 -> 系统信息
-- 作用：删除所有业务数据、清空备份和日志，仅保留默认管理员账户
-- 该操作不可恢复，页面已加入倒计时确认保护
-
-### 关于选课
-
-- 学生入口：侧边栏“课程选择”
-- 管理员入口：选课记录页中的“代学生选课”
-- 学生不能自行退课
-
-## 文档导航
-
-- 用户手册：用户视角的操作说明，见 用户手册.md
-- 功能介绍：适合汇报、答辩、展示的功能总览，见 功能介绍.md
-
-## 依赖版本
-
-当前 requirements.txt 主要依赖如下：
-
-- Flask 3.0.3
-- Flask-SQLAlchemy 3.1.1
-- Flask-Migrate 4.1.0
-- SQLAlchemy 2.0.48
-- openpyxl 3.1.2
-- Flask-WTF 1.2.1
-- WTForms 3.1.1
-- bcrypt 4.1.2
-- pyotp 2.9.0
-
-## VPS 一键更新（保留数据库）
-
-- 脚本位置：scripts/vps_update.sh
-- 功能：自动备份数据库、拉取代码、安装依赖、执行迁移、重启服务
-
-首次使用建议步骤：
-
-1. 上传最新代码到 VPS 并进入项目目录
-2. 给脚本执行权限：chmod +x scripts/vps_update.sh
-3. 若是首次接入迁移（已有旧数据库）：
-	STAMP_HEAD_ONCE=1 bash scripts/vps_update.sh
-4. 后续常规更新：
-	bash scripts/vps_update.sh
-
-常用可选参数（环境变量覆盖）：
-
-- PROJECT_DIR（项目目录，默认 /var/www/jystudent）
-- VENV_PATH（虚拟环境目录，默认 /var/www/jystudent/.venv）
-- APP_MODULE（Flask 应用入口，默认 app:app）
-- SERVICE_NAME（systemd 服务名，默认 jystudent）
-- BRANCH（Git 分支，默认 main）
-- DB_FILE（数据库相对路径，默认 instance/students.db）
-- BACKUP_DIR（备份目录，默认 /var/backups/jystudent）
-- SKIP_RESTART=1（只更新不重启服务）
+- 用户手册：见 用户手册.md
+- 模块说明：见 讲解.md（新建，用于小组作业说明）
 
 ## 后续维护建议
 
-- 如果继续扩展业务，建议逐步把 app.py 中的新功能回迁到 app/ 模块化结构
-- 在执行“跑路”前先创建数据库备份
-- 生产环境部署时应更换 SECRET_KEY 和默认管理员密码
+- 若继续扩展，建议把 `app.py` 中的新功能回迁到 `app/` 下模块化结构。
+- 生产环境请更换 `SECRET_KEY` 并修改默认管理员密码。
