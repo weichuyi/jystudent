@@ -10,10 +10,12 @@ from functools import wraps
 
 import io
 
-from flask import Flask, flash, redirect, render_template, request, send_file, session, url_for
+from flask import Flask, flash, has_request_context, redirect, render_template, request, send_file, session, url_for
+from flask_migrate import Migrate
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import event
 from werkzeug.security import check_password_hash, generate_password_hash
 
 # 打包后 importlib 动态加载时 __name__ 不是 __main__，
@@ -58,6 +60,7 @@ DEFAULT_ADMIN_PASSWORD = "weichuy1"
 DEFAULT_ADMIN_EMAIL = "admin@school.com"
 
 db = SQLAlchemy(app)
+migrate = Migrate(app, db, compare_type=True)
 
 course_teacher_links = db.Table(
     "course_teacher_links",
@@ -235,6 +238,48 @@ class PasswordResetKey(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     used_at = db.Column(db.DateTime)
     request_ip = db.Column(db.String(45))
+
+
+def _get_client_ip():
+    """提取客户端真实 IP（优先代理头）。"""
+    if not has_request_context():
+        return ""
+
+    forwarded_for = request.headers.get("X-Forwarded-For", "").strip()
+    if forwarded_for:
+        return forwarded_for.split(",", 1)[0].strip()
+
+    real_ip = request.headers.get("X-Real-IP", "").strip()
+    if real_ip:
+        return real_ip
+
+    return (request.remote_addr or "").strip()
+
+
+def _build_operation_request_details():
+    """构造操作日志的请求上下文信息（精简：仅保留 IP）。"""
+    if not has_request_context():
+        return ""
+
+    client_ip = _get_client_ip()
+    if not client_ip:
+        return ""
+
+    return f"IP={client_ip}"
+
+
+@event.listens_for(OperationLog, "before_insert")
+def _enrich_operation_log_before_insert(mapper, connection, target):
+    """统一增强操作日志详情，自动附加请求上下文。"""
+    extra_details = _build_operation_request_details()
+    if not extra_details:
+        return
+
+    current_details = (target.details or "").strip()
+    if "IP=" in current_details:
+        return
+
+    target.details = f"{current_details} | {extra_details}" if current_details else extra_details
 
 
 # ======================== 权限装饰器 ========================

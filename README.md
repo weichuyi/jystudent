@@ -192,12 +192,38 @@ jystudent/
 
 - Flask 3.0.3
 - Flask-SQLAlchemy 3.1.1
+- Flask-Migrate 4.1.0
 - SQLAlchemy 2.0.48
 - openpyxl 3.1.2
 - Flask-WTF 1.2.1
 - WTForms 3.1.1
 - bcrypt 4.1.2
 - pyotp 2.9.0
+
+## VPS 一键更新（保留数据库）
+
+- 脚本位置：scripts/vps_update.sh
+- 功能：自动备份数据库、拉取代码、安装依赖、执行迁移、重启服务
+
+首次使用建议步骤：
+
+1. 上传最新代码到 VPS 并进入项目目录
+2. 给脚本执行权限：chmod +x scripts/vps_update.sh
+3. 若是首次接入迁移（已有旧数据库）：
+	STAMP_HEAD_ONCE=1 bash scripts/vps_update.sh
+4. 后续常规更新：
+	bash scripts/vps_update.sh
+
+常用可选参数（环境变量覆盖）：
+
+- PROJECT_DIR（项目目录，默认 /var/www/jystudent）
+- VENV_PATH（虚拟环境目录，默认 /var/www/jystudent/.venv）
+- APP_MODULE（Flask 应用入口，默认 app:app）
+- SERVICE_NAME（systemd 服务名，默认 jystudent）
+- BRANCH（Git 分支，默认 main）
+- DB_FILE（数据库相对路径，默认 instance/students.db）
+- BACKUP_DIR（备份目录，默认 /var/backups/jystudent）
+- SKIP_RESTART=1（只更新不重启服务）
 
 ## 后续维护建议
 

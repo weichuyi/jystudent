@@ -88,13 +88,17 @@
           <th>操作人</th>
           <th>操作</th>
           <th>模块</th>
-          <th>详情</th>
+          <th>IP</th>
           <th>时间</th>
         </tr>
       </thead>
       <tbody>
         {% if logs %}
         {% for log in logs %}
+        {% set ip = '' %}
+        {% if log.details and 'IP=' in log.details %}
+        {% set ip = log.details.split('IP=', 1)[1].split(';', 1)[0].strip().split('|', 1)[0].strip() %}
+        {% endif %}
         <tr>
           <td style="color:#94a3b8;font-size:.78rem">{{ loop.index }}</td>
           <td class="fw-semibold">{{ log.user.full_name if log.user else '' }}</td>
@@ -110,7 +114,7 @@
             {% endif %}
           </td>
           <td>{{ log.module or '' }}</td>
-          <td style="color:#475569">{{ log.details or '' }}</td>
+          <td style="color:#475569">{{ ip or '-' }}</td>
           <td style="color:#94a3b8;font-size:.8rem">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else '' }}</td>
         </tr>
         {% endfor %}
