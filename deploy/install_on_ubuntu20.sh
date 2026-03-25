@@ -27,7 +27,8 @@ if [ ! -d "$REPO_DIR" ]; then
 fi
 
 echo "设置目录权限..."
-chown -R $(whoami):$(whoami) "$REPO_DIR"
+# 将项目目录归属设置为运行用户 jystudent（如果 user 不存在，已在上面创建）
+chown -R jystudent:jystudent "$REPO_DIR" || chown -R $(whoami):$(whoami) "$REPO_DIR"
 
 echo "创建虚拟环境并安装 Python 依赖..."
 python3 -m venv "$VENV_DIR"
