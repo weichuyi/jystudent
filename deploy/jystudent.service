@@ -1,0 +1,15 @@
+[Unit]
+Description=JYStudent Flask App
+After=network.target
+
+[Service]
+User=jystudent
+Group=jystudent
+WorkingDirectory=/opt/jystudent
+Environment="PATH=/opt/jystudent/venv/bin"
+ExecStart=/opt/jystudent/venv/bin/gunicorn --workers 3 --bind unix:/run/jystudent.sock wsgi:app
+Restart=on-failure
+RuntimeDirectory=jystudent
+
+[Install]
+WantedBy=multi-user.target
