@@ -11,7 +11,6 @@ from functools import wraps
 import io
 
 from flask import Flask, flash, has_request_context, redirect, render_template, request, send_file, session, url_for
-from flask_migrate import Migrate
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from flask_sqlalchemy import SQLAlchemy
@@ -60,7 +59,6 @@ DEFAULT_ADMIN_PASSWORD = "weichuy1"
 DEFAULT_ADMIN_EMAIL = "admin@school.com"
 
 db = SQLAlchemy(app)
-migrate = Migrate(app, db, compare_type=True)
 
 course_teacher_links = db.Table(
     "course_teacher_links",
