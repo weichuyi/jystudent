@@ -25,6 +25,7 @@ DB_FILE="${DB_FILE:-instance/students.db}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/jystudent}"
 SKIP_RESTART="${SKIP_RESTART:-0}"
 STAMP_HEAD_ONCE="${STAMP_HEAD_ONCE:-0}"
+AUTO_STASH="${AUTO_STASH:-1}"
 
 log() {
   printf "[%s] %s\n" "$(date '+%F %T')" "$*"
@@ -60,12 +61,28 @@ if [ -f "$DB_FILE" ]; then
   cp -a "$DB_FILE" "$BACKUP_PATH"
   log "Database backup created: $BACKUP_PATH"
 else
+  BACKUP_PATH=""
   log "Database file not found, skip backup: $DB_FILE"
+fi
+
+if [ "$AUTO_STASH" = "1" ]; then
+  if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+    STASH_NAME="auto-pre-update-$(date +%F_%H%M%S)"
+    log "Working tree has local changes, creating stash: $STASH_NAME"
+    git stash push -u -m "$STASH_NAME"
+    log "Local changes stashed. You can check later with: git stash list"
+  fi
 fi
 
 log "Sync code from origin/$BRANCH"
 git fetch origin "$BRANCH"
 git pull --rebase origin "$BRANCH"
+
+if [ -n "${BACKUP_PATH:-}" ] && [ -f "$BACKUP_PATH" ]; then
+  mkdir -p "$(dirname "$DB_FILE")"
+  cp -a "$BACKUP_PATH" "$DB_FILE"
+  log "Database restored from backup after pull: $BACKUP_PATH"
+fi
 
 log "Install dependencies"
 "$VENV_PATH/bin/python" -m pip install --upgrade pip
