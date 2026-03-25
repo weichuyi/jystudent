@@ -11,6 +11,7 @@ from functools import wraps
 import io
 
 from flask import Flask, flash, has_request_context, redirect, render_template, request, send_file, session, url_for
+from werkzeug.middleware.proxy_fix import ProxyFix
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from flask_sqlalchemy import SQLAlchemy
@@ -26,6 +27,10 @@ else:
     _app_root = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__, root_path=_app_root)
+
+# 若部署在反向代理/负载均衡器后，使用 ProxyFix 信任代理转发的头
+# 若有多层代理，请根据层数调整 x_for 等参数
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
 app.config["SECRET_KEY"] = "student-system-secret-key-2026"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///students.db"
@@ -243,6 +248,17 @@ def _get_client_ip():
     if not has_request_context():
         return ""
 
+    # 如果启用了 ProxyFix，Werkzeug 会填充 request.access_route，首项为真实客户端 IP
+    try:
+        access_route = getattr(request, "access_route", None)
+        if access_route:
+            ip = access_route[0]
+            if ip:
+                return ip.strip()
+    except Exception:
+        pass
+
+    # 回退到常见的代理头
     forwarded_for = request.headers.get("X-Forwarded-For", "").strip()
     if forwarded_for:
         return forwarded_for.split(",", 1)[0].strip()
@@ -251,7 +267,8 @@ def _get_client_ip():
     if real_ip:
         return real_ip
 
-    return (request.remote_addr or "").strip()
+    # 最后使用 environ REMOTE_ADDR
+    return (request.environ.get("REMOTE_ADDR") or "").strip()
 
 
 def _build_operation_request_details():
